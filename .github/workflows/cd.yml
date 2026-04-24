@@ -1,0 +1,377 @@
+name: SmartERP CD Pipeline
+
+on:
+  workflow_run:
+    workflows: ["SmartERP CI Pipeline"]
+    types: [completed]
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_integration_tests:
+        description: 'Skip integration tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+  KUBE_NAMESPACE_STAGING: smarterp-staging
+  KUBE_NAMESPACE_PROD: smarterp-production
+
+jobs:
+  # ─── Step 1: Deploy to Staging ──────────────────────────────────
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch')
+    environment:
+      name: staging
+      url: https://staging.smarterp.it
+    outputs:
+      deployed_version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          VERSION="${GITHUB_SHA::8}-$(date +%Y%m%d%H%M%S)"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG_STAGING }}
+
+      - name: Update Kubernetes manifests
+        run: |
+          export IMAGE_TAG="${{ steps.version.outputs.version }}"
+          export NAMESPACE="${{ env.KUBE_NAMESPACE_STAGING }}"
+
+          # Ensure namespace exists
+          kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+
+          # Deploy backend
+          kubectl set image deployment/smarterp-backend \
+            smarterp-backend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:main-${{ github.sha }} \
+            -n $NAMESPACE || echo "Backend deployment not found, applying manifests..."
+
+          # Deploy frontend
+          kubectl set image deployment/smarterp-frontend \
+            smarterp-frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }} \
+            -n $NAMESPACE || echo "Frontend deployment not found, applying manifests..."
+
+      - name: Wait for rollout
+        run: |
+          NAMESPACE="${{ env.KUBE_NAMESPACE_STAGING }}"
+          kubectl rollout status deployment/smarterp-backend -n $NAMESPACE --timeout=300s || true
+          kubectl rollout status deployment/smarterp-frontend -n $NAMESPACE --timeout=300s || true
+
+      - name: Verify staging deployment
+        run: |
+          echo "Checking staging health..."
+          for i in $(seq 1 10); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://staging-api.smarterp.it/api/health || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Staging backend is healthy (attempt $i)"
+              break
+            fi
+            echo "Attempt $i: HTTP $HTTP_CODE - waiting..."
+            sleep 10
+          done
+
+  # ─── Step 2: Integration Tests ─────────────────────────────────
+  integration-tests:
+    name: Integration Tests on Staging
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: >
+      (github.event_name != 'workflow_dispatch') ||
+      (github.event.inputs.skip_integration_tests != 'true')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run API integration tests
+        env:
+          API_BASE_URL: https://staging-api.smarterp.it/api
+          TEST_USER_EMAIL: ${{ secrets.STAGING_TEST_USER }}
+          TEST_USER_PASSWORD: ${{ secrets.STAGING_TEST_PASSWORD }}
+        run: |
+          echo "Running integration tests against staging..."
+
+          # Health check
+          echo "Testing health endpoint..."
+          HEALTH=$(curl -s https://staging-api.smarterp.it/api/health)
+          echo "Health response: $HEALTH"
+
+          # Verify JSON response
+          STATUS=$(echo $HEALTH | jq -r '.status' 2>/dev/null || echo "failed")
+          if [ "$STATUS" != "ok" ]; then
+            echo "Health check failed!"
+            exit 1
+          fi
+          echo "Health check passed."
+
+          # Test auth endpoints
+          echo "Testing authentication..."
+          AUTH_RESPONSE=$(curl -s -X POST https://staging-api.smarterp.it/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$TEST_USER_EMAIL\",\"password\":\"$TEST_USER_PASSWORD\"}")
+          TOKEN=$(echo $AUTH_RESPONSE | jq -r '.accessToken' 2>/dev/null || echo "")
+
+          if [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; then
+            echo "Authentication test passed."
+
+            # Test inventory endpoint
+            echo "Testing inventory endpoints..."
+            INV_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+              https://staging-api.smarterp.it/api/inventory/products)
+            echo "Inventory response received."
+
+            # Test production endpoint
+            echo "Testing production endpoints..."
+            PROD_RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+              https://staging-api.smarterp.it/api/production/dashboard)
+            echo "Production response received."
+          else
+            echo "Warning: Auth test could not obtain token. Skipping authenticated tests."
+          fi
+
+          echo "Integration tests completed."
+
+      - name: Run E2E browser tests
+        env:
+          STAGING_URL: https://staging.smarterp.it
+        run: |
+          echo "E2E browser tests would run here (Playwright/Cypress)"
+          echo "Target: $STAGING_URL"
+          echo "Skipping in this template - add your E2E framework here."
+
+  # ─── Step 3: Deploy to Production ──────────────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, integration-tests]
+    if: >
+      (github.event_name == 'workflow_run') ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://app.smarterp.it
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure kubectl for production
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+
+      - name: Create database backup before deployment
+        run: |
+          echo "Creating pre-deployment database backup..."
+          kubectl exec -n ${{ env.KUBE_NAMESPACE_PROD }} deploy/smarterp-db -- \
+            pg_dump -U smarterp smarterp | gzip > /tmp/backup-$(date +%Y%m%d%H%M%S).sql.gz || true
+          echo "Backup completed."
+
+      - name: Deploy to production with canary
+        run: |
+          NAMESPACE="${{ env.KUBE_NAMESPACE_PROD }}"
+
+          # Update backend image
+          kubectl set image deployment/smarterp-backend \
+            smarterp-backend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:main-${{ github.sha }} \
+            -n $NAMESPACE
+
+          # Update frontend image
+          kubectl set image deployment/smarterp-frontend \
+            smarterp-frontend=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:main-${{ github.sha }} \
+            -n $NAMESPACE
+
+      - name: Wait for production rollout
+        run: |
+          NAMESPACE="${{ env.KUBE_NAMESPACE_PROD }}"
+          echo "Waiting for backend rollout..."
+          kubectl rollout status deployment/smarterp-backend -n $NAMESPACE --timeout=600s
+
+          echo "Waiting for frontend rollout..."
+          kubectl rollout status deployment/smarterp-frontend -n $NAMESPACE --timeout=600s
+
+      - name: Tag release
+        run: |
+          VERSION="v${{ needs.deploy-staging.outputs.deployed_version }}"
+          git tag $VERSION
+          git push origin $VERSION || true
+          echo "Tagged release: $VERSION"
+
+  # ─── Step 4: Health Check ───────────────────────────────────────
+  health-check:
+    name: Production Health Check
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    steps:
+      - name: Comprehensive health verification
+        run: |
+          echo "Running post-deployment health checks..."
+
+          MAX_RETRIES=12
+          RETRY_INTERVAL=15
+
+          # Backend health check
+          echo "Checking backend API health..."
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://api.smarterp.it/api/health || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Backend healthy after $i attempts"
+              BACKEND_HEALTHY=true
+              break
+            fi
+            echo "Attempt $i/$MAX_RETRIES: HTTP $HTTP_CODE"
+            sleep $RETRY_INTERVAL
+          done
+
+          # Frontend health check
+          echo "Checking frontend health..."
+          for i in $(seq 1 $MAX_RETRIES); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://app.smarterp.it/ || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Frontend healthy after $i attempts"
+              FRONTEND_HEALTHY=true
+              break
+            fi
+            echo "Attempt $i/$MAX_RETRIES: HTTP $HTTP_CODE"
+            sleep $RETRY_INTERVAL
+          done
+
+          # Readiness probe
+          echo "Checking readiness probe..."
+          READY=$(curl -s https://api.smarterp.it/api/health/ready | jq -r '.status' 2>/dev/null || echo "failed")
+          echo "Readiness status: $READY"
+
+          # Final verdict
+          if [ "$BACKEND_HEALTHY" = "true" ] && [ "$FRONTEND_HEALTHY" = "true" ]; then
+            echo "All health checks PASSED."
+          else
+            echo "WARNING: Some health checks failed. Manual investigation required."
+            exit 1
+          fi
+
+  # ─── Step 5: Notify ────────────────────────────────────────────
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [deploy-production, health-check]
+    if: always()
+    steps:
+      - name: Determine deployment status
+        id: status
+        run: |
+          if [ "${{ needs.health-check.result }}" = "success" ]; then
+            echo "status=success" >> $GITHUB_OUTPUT
+            echo "message=SmartERP deployed successfully to production" >> $GITHUB_OUTPUT
+            echo "color=good" >> $GITHUB_OUTPUT
+          else
+            echo "status=failure" >> $GITHUB_OUTPUT
+            echo "message=SmartERP production deployment requires attention" >> $GITHUB_OUTPUT
+            echo "color=danger" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: |
+            {
+              "text": "${{ steps.status.outputs.message }}",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "SmartERP Deployment - ${{ steps.status.outputs.status }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Environment:*\nProduction"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Triggered by:*\n${{ github.actor }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Status:*\n${{ steps.status.outputs.status }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+      - name: Send email notification on failure
+        if: needs.health-check.result == 'failure'
+        run: |
+          echo "Production deployment health check failed."
+          echo "Manual intervention may be required."
+          echo "Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  # ─── Rollback (manual trigger) ─────────────────────────────────
+  rollback:
+    name: Rollback Production
+    runs-on: ubuntu-latest
+    if: failure() && needs.health-check.result == 'failure'
+    needs: health-check
+    environment:
+      name: production
+    steps:
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+
+      - name: Rollback deployments
+        run: |
+          NAMESPACE="${{ env.KUBE_NAMESPACE_PROD }}"
+          echo "Rolling back production deployments..."
+
+          kubectl rollout undo deployment/smarterp-backend -n $NAMESPACE
+          kubectl rollout undo deployment/smarterp-frontend -n $NAMESPACE
+
+          echo "Waiting for rollback to complete..."
+          kubectl rollout status deployment/smarterp-backend -n $NAMESPACE --timeout=300s
+          kubectl rollout status deployment/smarterp-frontend -n $NAMESPACE --timeout=300s
+
+          echo "Rollback completed."

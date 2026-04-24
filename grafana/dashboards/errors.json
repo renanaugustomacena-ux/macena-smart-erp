@@ -1,0 +1,57 @@
+{
+  "uid": "smarterp-errors",
+  "title": "SmartERP — Errors",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": ["smarterp", "errors"],
+  "timezone": "Europe/Rome",
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "5xx error rate",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(smarterp_http_errors_total{status=~\"5..\"}[5m]))",
+          "legendFormat": "5xx/s",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(smarterp_http_errors_total{status=~\"4..\"}[5m]))",
+          "legendFormat": "4xx/s",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "table",
+      "title": "Top endpoints emitting 5xx",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 10 },
+      "targets": [
+        {
+          "expr": "topk(20, sum by (path, method) (rate(smarterp_http_errors_total{status=~\"5..\"}[15m])))",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Auth failures (invalid credentials + lockouts)",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(smarterp_auth_events_total[5m]))",
+          "legendFormat": "{{outcome}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

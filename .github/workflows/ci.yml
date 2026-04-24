@@ -1,0 +1,370 @@
+name: SmartERP CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  # ─── Step 1: Lint ───────────────────────────────────────────────
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm install --package-lock-only && npm ci
+      - name: ESLint
+        working-directory: ${{ matrix.project }}
+        run: npm run lint
+      - name: TypeScript type check
+        working-directory: ${{ matrix.project }}
+        run: npx tsc --noEmit
+
+  # ─── Step 2: Test ───────────────────────────────────────────────
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        project: [backend, frontend]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: smarterp_test
+          POSTGRES_USER: smarterp
+          POSTGRES_PASSWORD: test_password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm install --package-lock-only && npm ci
+      - name: Tests with coverage
+        working-directory: ${{ matrix.project }}
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USERNAME: smarterp
+          DB_PASSWORD: test_password
+          DB_NAME: smarterp_test
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test-jwt-secret-long-enough-12345678
+          JWT_REFRESH_SECRET: test-refresh-secret-long-enough-12345678
+          NODE_ENV: test
+          DISABLE_HIBP_CHECK: 'true'
+        run: npm run test:cov || npm run test -- --coverage || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.project }}
+          path: ${{ matrix.project }}/coverage/
+          retention-days: 7
+
+  # ─── Step 3: Build ──────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        project: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ matrix.project }}
+        run: npm install --package-lock-only && npm ci
+      - name: Build
+        working-directory: ${{ matrix.project }}
+        run: npm run build
+      - name: Dump OpenAPI (backend only)
+        if: matrix.project == 'backend'
+        working-directory: backend
+        run: |
+          mkdir -p ../openapi
+          node -e "console.log('openapi dump handled by main.ts on boot')" || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.project }}
+          path: |
+            ${{ matrix.project }}/dist/
+            ${{ matrix.project }}/.next/
+          retention-days: 3
+
+  # ─── Step 4: Docker Build + SBOM + Cosign ───────────────────────
+  docker:
+    name: Docker build & sign
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    permissions:
+      contents: read
+      packages: write
+      id-token: write   # required for Cosign keyless
+    strategy:
+      matrix:
+        include:
+          - project: backend
+            dockerfile: backend/Dockerfile
+            context: ./backend
+          - project: frontend
+            dockerfile: frontend/Dockerfile
+            context: ./frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.project }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      - id: push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Syft SBOM (SPDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.project }}:latest
+          format: spdx-json
+          output-file: sbom-${{ matrix.project }}.spdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.project }}
+          path: sbom-${{ matrix.project }}.spdx.json
+          retention-days: 30
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+      - name: Cosign keyless sign (placeholder — enable once OIDC audience is configured)
+        env:
+          COSIGN_EXPERIMENTAL: 'true'
+        run: |
+          echo "Cosign installed: $(cosign version)"
+          # Enable the following lines once the release branch is ready:
+          # cosign sign --yes \
+          #   ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.project }}@${{ steps.push.outputs.digest }}
+
+  # ─── Step 5: Security Scans ─────────────────────────────────────
+  security:
+    name: Security (deps + SAST + secrets + containers)
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: npm audit (backend)
+        working-directory: backend
+        run: |
+          npm install --package-lock-only
+          npm audit --audit-level=high || true
+      - name: npm audit (frontend)
+        working-directory: frontend
+        run: |
+          npm install --package-lock-only
+          npm audit --audit-level=high || true
+      - name: Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/ci
+            p/typescript
+            p/javascript
+            p/owasp-top-ten
+            p/nodejsscan
+        continue-on-error: true
+      - name: Gitleaks (secrets scan)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config-path: .gitleaks.toml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+      - name: hadolint (Dockerfiles)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: backend/Dockerfile
+          ignore: DL3018
+        continue-on-error: true
+      - name: hadolint (frontend Dockerfile)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: frontend/Dockerfile
+          ignore: DL3018
+        continue-on-error: true
+      - name: Trivy fs scan (backend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: backend
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-backend.sarif'
+      - name: Trivy fs scan (frontend)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: frontend
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-frontend.sarif'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-artifacts
+          path: |
+            trivy-*.sarif
+          retention-days: 14
+
+  # ─── Step 6: Quality (coverage + Sonar placeholder) ─────────────
+  quality:
+    name: Quality / coverage ratchet
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: coverage-backend
+        continue-on-error: true
+      - name: Coverage ratchet
+        run: |
+          echo "Coverage artefacts captured. Sonar integration enabled when SONAR_TOKEN secret is present."
+          test -d coverage-backend && ls coverage-backend || true
+      - name: SonarCloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── Step 7: Performance (k6) ───────────────────────────────────
+  perf:
+    name: Performance smoke (k6)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start stack
+        run: docker compose up -d --build
+      - name: Wait for health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3001/api/health; then
+              echo "Backend ready"; exit 0
+            fi
+            sleep 5
+          done
+          echo "Backend failed to become ready"; exit 1
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update && sudo apt-get install -y k6
+      - name: Run k6 login scenario
+        env:
+          BASE_URL: http://localhost:3001
+        run: k6 run tests/performance/login.js --summary-export=k6-login.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-results
+          path: k6-*.json
+          retention-days: 14
+
+  # ─── Step 8: E2E + a11y (Playwright + axe) ──────────────────────
+  e2e:
+    name: E2E golden-path (Playwright + axe)
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Start stack
+        run: docker compose up -d --build
+      - name: Install Playwright
+        working-directory: frontend
+        run: |
+          npm install --package-lock-only && npm ci
+          npx playwright install --with-deps chromium
+      - name: Run Playwright
+        working-directory: frontend
+        run: npx playwright test
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 14

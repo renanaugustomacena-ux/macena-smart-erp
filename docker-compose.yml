@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # ─── PostgreSQL Database ──────────────────────────────────────
+  smarterp-db:
+    image: postgres:16-alpine
+    container_name: smarterp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-smarterp}
+      POSTGRES_USER: ${DB_USERNAME:-smarterp}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smarterp_dev_pass}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=it_IT.UTF-8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - smarterp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-smarterp} -d ${DB_NAME:-smarterp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - smarterp-network
+
+  # ─── Redis Cache ──────────────────────────────────────��───────
+  smarterp-redis:
+    image: redis:7-alpine
+    container_name: smarterp-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - smarterp_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarterp-network
+
+  # ─── NestJS Backend ───────────────────────────────────────────
+  smarterp-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smarterp-backend
+    restart: unless-stopped
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      DB_HOST: smarterp-db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-smarterp}
+      DB_PASSWORD: ${DB_PASSWORD:-smarterp_dev_pass}
+      DB_NAME: ${DB_NAME:-smarterp}
+      REDIS_HOST: smarterp-redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-smarterp-jwt-secret-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-smarterp-refresh-secret-change-in-production}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    depends_on:
+      smarterp-db:
+        condition: service_healthy
+      smarterp-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - smarterp-network
+
+  # ─── Next.js Frontend ────────────────────────────────────��────
+  smarterp-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smarterp-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api}
+      BACKEND_URL: http://smarterp-backend:3001
+    depends_on:
+      smarterp-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - smarterp-network
+
+volumes:
+  smarterp_pgdata:
+    driver: local
+  smarterp_redis_data:
+    driver: local
+
+networks:
+  smarterp-network:
+    driver: bridge
+    name: smarterp-network

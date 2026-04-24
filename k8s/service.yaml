@@ -1,0 +1,40 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smarterp-backend
+  namespace: smarterp
+  labels:
+    app.kubernetes.io/name: smarterp
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: smarterp
+    app.kubernetes.io/component: backend
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smarterp-backend-metrics
+  namespace: smarterp
+  labels:
+    app.kubernetes.io/name: smarterp
+    app.kubernetes.io/component: backend
+    prometheus.io/service-monitor: "true"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: smarterp
+    app.kubernetes.io/component: backend
+  ports:
+    - name: metrics
+      port: 3001
+      targetPort: http
+      protocol: TCP

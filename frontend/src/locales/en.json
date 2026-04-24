@@ -1,0 +1,197 @@
+{
+  "$schema": "https://raw.githubusercontent.com/formatjs/formatjs/main/website/schemas/translation-schema.json",
+  "meta": {
+    "locale": "en",
+    "displayName": "English",
+    "direction": "ltr",
+    "currency": "EUR",
+    "dateFormat": "yyyy-MM-dd",
+    "decimalSeparator": ".",
+    "thousandSeparator": ","
+  },
+  "common": {
+    "appName": "SmartERP",
+    "tagline": "Cloud ERP for Manufacturing SMEs",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "tryAgain": "Try again",
+    "back": "Back",
+    "next": "Next",
+    "yes": "Yes",
+    "no": "No",
+    "actions": "Actions"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "inventory": "Inventory",
+    "production": "Production",
+    "sales": "Sales",
+    "accounting": "Accounting",
+    "customers": "Customers",
+    "suppliers": "Suppliers",
+    "reports": "Reports",
+    "settings": "Settings",
+    "logout": "Log out",
+    "profile": "Profile"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in to SmartERP",
+      "email": "Email address",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot your password?",
+      "registerLink": "No account? Register",
+      "invalidCredentials": "Invalid email or password",
+      "accountLocked": "Account temporarily locked after too many failed attempts. Try again in {minutes} minutes."
+    },
+    "register": {
+      "title": "Create your company account",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "companyName": "Company name",
+      "partitaIva": "Italian VAT Number (Partita IVA)",
+      "phone": "Phone",
+      "submit": "Register",
+      "loginLink": "Already have an account? Sign in",
+      "passwordRules": "Minimum 10 characters, at least one letter and one digit",
+      "partitaIvaInvalid": "Invalid Partita IVA (must be 11 digits)"
+    },
+    "logout": { "confirm": "Are you sure you want to sign out?" }
+  },
+  "inventory": {
+    "products": {
+      "title": "Products",
+      "sku": "SKU",
+      "name": "Name",
+      "category": "Category",
+      "uom": "Unit of measure",
+      "unitCost": "Unit cost",
+      "sellingPrice": "Selling price",
+      "minimumStock": "Minimum stock",
+      "reorderPoint": "Reorder point",
+      "createProduct": "New product"
+    },
+    "warehouses": { "title": "Warehouses", "code": "Code", "name": "Name" },
+    "movements": {
+      "title": "Stock movements",
+      "type": "Movement type",
+      "inbound": "Inbound",
+      "outbound": "Outbound",
+      "transfer": "Transfer",
+      "adjustment": "Inventory adjustment",
+      "recordMovement": "Record movement"
+    }
+  },
+  "production": {
+    "orders": {
+      "title": "Production orders",
+      "orderNumber": "Order number",
+      "product": "Product",
+      "quantity": "Quantity",
+      "dueDate": "Due date",
+      "status": "Status",
+      "createOrder": "New production order"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "planned": "Planned",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "sales": {
+    "orders": {
+      "title": "Sales orders",
+      "orderNumber": "Order number",
+      "customer": "Customer",
+      "orderDate": "Order date",
+      "deliveryDate": "Requested delivery",
+      "subtotal": "Subtotal",
+      "tax": "VAT",
+      "total": "Total"
+    },
+    "customers": {
+      "title": "Customers",
+      "code": "Code",
+      "name": "Name",
+      "vatNumber": "VAT number",
+      "fiscalCode": "Fiscal code",
+      "sdiCode": "SDI destination code",
+      "pecEmail": "PEC email",
+      "splitPayment": "Split payment (art. 17-ter)"
+    }
+  },
+  "accounting": {
+    "invoices": {
+      "title": "Electronic invoices",
+      "number": "Number",
+      "date": "Date",
+      "customer": "Customer",
+      "documentType": "Document type",
+      "status": "SDI status",
+      "download": "Download XML",
+      "queue": "Submit to SDI"
+    },
+    "invoiceStatuses": {
+      "draft": "Draft",
+      "queued": "Queued",
+      "sent": "Sent",
+      "received": "Received (RC)",
+      "accepted": "Accepted",
+      "rejected": "Rejected (NS)",
+      "not_delivered": "Not delivered (MC)",
+      "expired": "Expired (DT)",
+      "cancelled": "Cancelled"
+    },
+    "documentTypes": {
+      "TD01": "TD01 — Invoice",
+      "TD02": "TD02 — Advance",
+      "TD04": "TD04 — Credit note",
+      "TD05": "TD05 — Debit note",
+      "TD17": "TD17 — Cross-border purchase",
+      "TD18": "TD18 — Intra-EU purchase",
+      "TD19": "TD19 — Customs reverse charge",
+      "TD24": "TD24 — Deferred invoice",
+      "TD26": "TD26 — Disposal of depreciable assets"
+    },
+    "chartOfAccounts": {
+      "title": "Chart of accounts",
+      "code": "Code",
+      "description": "Description",
+      "type": "Type",
+      "seedTemplate": "Load IV CEE template"
+    },
+    "journalEntries": {
+      "title": "Journal entries",
+      "entryDate": "Entry date",
+      "reference": "Reference",
+      "journal": "Journal",
+      "debit": "Debit",
+      "credit": "Credit"
+    },
+    "ivaLiquidation": {
+      "title": "VAT liquidation",
+      "period": "Period",
+      "taxable": "Taxable base",
+      "iva": "VAT",
+      "monthly": "Monthly",
+      "quarterly": "Quarterly"
+    }
+  },
+  "errors": {
+    "notFound": "Not found",
+    "forbidden": "Forbidden",
+    "unauthorized": "Session expired, please sign in again",
+    "serverError": "Server error, please try again later",
+    "validationFailed": "The submitted data is invalid",
+    "crossTenant": "You are not authorised to access another tenant's data"
+  }
+}

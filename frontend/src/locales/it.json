@@ -1,0 +1,203 @@
+{
+  "$schema": "https://raw.githubusercontent.com/formatjs/formatjs/main/website/schemas/translation-schema.json",
+  "meta": {
+    "locale": "it",
+    "displayName": "Italiano",
+    "direction": "ltr",
+    "currency": "EUR",
+    "dateFormat": "dd/MM/yyyy",
+    "decimalSeparator": ",",
+    "thousandSeparator": "."
+  },
+  "common": {
+    "appName": "SmartERP",
+    "tagline": "Il Gestionale Cloud per le PMI Manifatturiere",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "create": "Crea",
+    "search": "Cerca",
+    "loading": "Caricamento in corso...",
+    "error": "Si è verificato un errore",
+    "tryAgain": "Riprova",
+    "back": "Indietro",
+    "next": "Avanti",
+    "yes": "Sì",
+    "no": "No",
+    "actions": "Azioni"
+  },
+  "navigation": {
+    "dashboard": "Cruscotto",
+    "inventory": "Magazzino",
+    "production": "Produzione",
+    "sales": "Vendite",
+    "accounting": "Contabilità",
+    "customers": "Clienti",
+    "suppliers": "Fornitori",
+    "reports": "Report",
+    "settings": "Impostazioni",
+    "logout": "Esci",
+    "profile": "Profilo"
+  },
+  "auth": {
+    "login": {
+      "title": "Accedi a SmartERP",
+      "email": "Indirizzo email",
+      "password": "Password",
+      "submit": "Accedi",
+      "forgotPassword": "Password dimenticata?",
+      "registerLink": "Non hai un account? Registrati",
+      "invalidCredentials": "Email o password non validi",
+      "accountLocked": "Account temporaneamente bloccato per troppi tentativi falliti. Riprova tra {minutes} minuti."
+    },
+    "register": {
+      "title": "Crea il tuo account aziendale",
+      "firstName": "Nome",
+      "lastName": "Cognome",
+      "companyName": "Ragione sociale",
+      "partitaIva": "Partita IVA",
+      "phone": "Telefono",
+      "submit": "Registrati",
+      "loginLink": "Hai già un account? Accedi",
+      "passwordRules": "Minimo 10 caratteri, almeno una lettera e un numero",
+      "partitaIvaInvalid": "Partita IVA non valida (deve essere di 11 cifre)"
+    },
+    "logout": {
+      "confirm": "Sei sicuro di voler uscire?"
+    }
+  },
+  "inventory": {
+    "products": {
+      "title": "Prodotti",
+      "sku": "Codice articolo",
+      "name": "Denominazione",
+      "category": "Categoria",
+      "uom": "Unità di misura",
+      "unitCost": "Costo unitario",
+      "sellingPrice": "Prezzo di vendita",
+      "minimumStock": "Scorta minima",
+      "reorderPoint": "Punto di riordino",
+      "createProduct": "Nuovo prodotto"
+    },
+    "warehouses": {
+      "title": "Magazzini",
+      "code": "Codice",
+      "name": "Denominazione"
+    },
+    "movements": {
+      "title": "Movimenti di magazzino",
+      "type": "Tipo movimento",
+      "inbound": "Carico",
+      "outbound": "Scarico",
+      "transfer": "Trasferimento",
+      "adjustment": "Rettifica inventariale",
+      "recordMovement": "Registra movimento"
+    }
+  },
+  "production": {
+    "orders": {
+      "title": "Ordini di produzione",
+      "orderNumber": "Numero ordine",
+      "product": "Prodotto",
+      "quantity": "Quantità",
+      "dueDate": "Data consegna",
+      "status": "Stato",
+      "createOrder": "Nuovo ordine di produzione"
+    },
+    "statuses": {
+      "draft": "Bozza",
+      "planned": "Pianificato",
+      "in_progress": "In produzione",
+      "completed": "Completato",
+      "cancelled": "Annullato"
+    }
+  },
+  "sales": {
+    "orders": {
+      "title": "Ordini di vendita",
+      "orderNumber": "Numero ordine",
+      "customer": "Cliente",
+      "orderDate": "Data ordine",
+      "deliveryDate": "Data consegna richiesta",
+      "subtotal": "Imponibile",
+      "tax": "IVA",
+      "total": "Totale"
+    },
+    "customers": {
+      "title": "Anagrafica clienti",
+      "code": "Codice",
+      "name": "Ragione sociale",
+      "vatNumber": "Partita IVA",
+      "fiscalCode": "Codice fiscale",
+      "sdiCode": "Codice destinatario SDI",
+      "pecEmail": "PEC",
+      "splitPayment": "Split payment (art. 17-ter)"
+    }
+  },
+  "accounting": {
+    "invoices": {
+      "title": "Fatture elettroniche",
+      "number": "Numero",
+      "date": "Data",
+      "customer": "Cliente",
+      "documentType": "Tipo documento",
+      "status": "Stato SDI",
+      "download": "Scarica XML",
+      "queue": "Invia a SDI"
+    },
+    "invoiceStatuses": {
+      "draft": "Bozza",
+      "queued": "In coda",
+      "sent": "Inviata",
+      "received": "Consegnata (RC)",
+      "accepted": "Accettata",
+      "rejected": "Scartata (NS)",
+      "not_delivered": "Mancata consegna (MC)",
+      "expired": "Decorsi termini (DT)",
+      "cancelled": "Annullata"
+    },
+    "documentTypes": {
+      "TD01": "TD01 — Fattura",
+      "TD02": "TD02 — Acconto / anticipo su fattura",
+      "TD04": "TD04 — Nota di credito",
+      "TD05": "TD05 — Nota di debito",
+      "TD17": "TD17 — Integrazione / autofattura acquisti estero",
+      "TD18": "TD18 — Integrazione acquisti intra-UE",
+      "TD19": "TD19 — Reverse charge beni da deposito",
+      "TD24": "TD24 — Fattura differita art. 21",
+      "TD26": "TD26 — Cessione beni ammortizzabili"
+    },
+    "chartOfAccounts": {
+      "title": "Piano dei Conti",
+      "code": "Codice",
+      "description": "Descrizione",
+      "type": "Tipo",
+      "seedTemplate": "Carica modello IV Direttiva CEE"
+    },
+    "journalEntries": {
+      "title": "Prima Nota",
+      "entryDate": "Data registrazione",
+      "reference": "Protocollo",
+      "journal": "Registro",
+      "debit": "Dare",
+      "credit": "Avere"
+    },
+    "ivaLiquidation": {
+      "title": "Liquidazione IVA",
+      "period": "Periodo",
+      "taxable": "Imponibile",
+      "iva": "IVA",
+      "monthly": "Mensile",
+      "quarterly": "Trimestrale"
+    }
+  },
+  "errors": {
+    "notFound": "Risorsa non trovata",
+    "forbidden": "Accesso negato",
+    "unauthorized": "Sessione scaduta, accedi di nuovo",
+    "serverError": "Errore del server, riprova più tardi",
+    "validationFailed": "I dati inseriti non sono validi",
+    "crossTenant": "Non sei autorizzato ad accedere ai dati di un'altra azienda"
+  }
+}

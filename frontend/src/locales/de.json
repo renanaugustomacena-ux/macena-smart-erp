@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/formatjs/formatjs/main/website/schemas/translation-schema.json",
+  "meta": {
+    "locale": "de",
+    "displayName": "Deutsch",
+    "direction": "ltr",
+    "currency": "EUR",
+    "dateFormat": "dd.MM.yyyy",
+    "decimalSeparator": ",",
+    "thousandSeparator": ".",
+    "status": "placeholder — South-Tyrol / Alto Adige customer support only; translations scheduled Q3 2026"
+  },
+  "common": {
+    "appName": "SmartERP",
+    "tagline": "Cloud-ERP für mittelständische Fertigungsbetriebe"
+  },
+  "navigation": {
+    "dashboard": "Übersicht",
+    "inventory": "Lager",
+    "production": "Produktion",
+    "sales": "Verkauf",
+    "accounting": "Buchhaltung",
+    "settings": "Einstellungen",
+    "logout": "Abmelden"
+  },
+  "auth": {
+    "login": {
+      "title": "Bei SmartERP anmelden",
+      "email": "E-Mail-Adresse",
+      "password": "Passwort",
+      "submit": "Anmelden"
+    }
+  }
+}
