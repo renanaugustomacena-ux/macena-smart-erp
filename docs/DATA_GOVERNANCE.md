@@ -12,7 +12,7 @@ objectives, the erasure SOP, and the portability contract.
 
 ## 1. Scope
 
-SmartERP is a multi-tenant SaaS ERP for Italian manufacturing SMEs.
+SmartERP is a multi-tenant cloud ERP platform for Italian manufacturing SMEs.
 Each tenant represents one customer organisation; tenants are isolated
 both at the application layer (TenantScopeGuard, every query carries
 tenantId) and at the Postgres layer (Row Level Security policies

@@ -1,7 +1,7 @@
 # Security Posture — SmartERP
 
 **Profile:** OWASP ASVS v4.0.3 Level 2 (L2) baseline. Level 3 for payment/invoice-critical flows where called out.
-**Threat model:** Italian manufacturing SME SaaS multi-tenant ERP; attackers are motivated by fiscal fraud (fake invoices), data theft (client lists, pricing), and ransomware.
+**Threat model:** Italian manufacturing SME multi-tenant cloud ERP; attackers are motivated by fiscal fraud (fake invoices), data theft (client lists, pricing), and ransomware.
 
 ---
 
