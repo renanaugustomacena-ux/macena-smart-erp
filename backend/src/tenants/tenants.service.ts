@@ -45,6 +45,9 @@ export class TenantsService {
 
   async create(dto: CreateTenantInput): Promise<Tenant> {
     if (dto.vatNumber) {
+      // Tenant aggregate dedup by Partita IVA — operating on the tenant
+      // registry itself; no parent-tenant scope exists.
+      // eslint-disable-next-line no-untenanted-query
       const existing = await this.tenantRepository.findOne({
         where: { vatNumber: dto.vatNumber },
       });
@@ -77,6 +80,8 @@ export class TenantsService {
   }
 
   async findById(id: string): Promise<Tenant> {
+    // Tenant entity lookup by its own PK; tenantId IS this entity's id.
+    // eslint-disable-next-line no-untenanted-query
     const tenant = await this.tenantRepository.findOne({ where: { id } });
     if (!tenant) {
       throw new NotFoundException(`Tenant ${id} not found`);

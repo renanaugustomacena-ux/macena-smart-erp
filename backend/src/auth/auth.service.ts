@@ -179,6 +179,9 @@ export class AuthService {
     user: Partial<User>;
   }> {
     const normalised = email.trim().toLowerCase();
+    // Login lookup is by globally-unique email; tenant scope is *established*
+    // by this call (the user's tenantId becomes the JWT claim).
+    // eslint-disable-next-line no-untenanted-query
     const user = await this.userRepository.findOne({
       where: { email: normalised, isActive: true },
     });
@@ -280,6 +283,9 @@ export class AuthService {
     tenantId?: string;
   }): Promise<{ message: string; user: Partial<User> }> {
     const normalised = registerDto.email.trim().toLowerCase();
+    // Pre-tenant flow — user does not yet have a tenantId; lookup by globally-
+    // unique email is the dedup-by-design pattern for registration.
+    // eslint-disable-next-line no-untenanted-query
     const existingUser = await this.userRepository.findOne({
       where: { email: normalised },
     });
@@ -354,6 +360,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
+    // Refresh-token user lookup by id from the verified JWT payload; tenant
+    // scope was established at login and rides in the JWT.
+    // eslint-disable-next-line no-untenanted-query
     const user = await this.userRepository.findOne({
       where: { id: payload.sub, isActive: true },
     });
@@ -367,6 +376,8 @@ export class AuthService {
       user.sessionCreatedAt &&
       Date.now() - user.sessionCreatedAt.getTime() > SESSION_ABSOLUTE_MS
     ) {
+      // Operating on the user just loaded (above); tenant-scoped by id.
+      // eslint-disable-next-line no-untenanted-query
       await this.userRepository.update(user.id, {
         refreshTokenHash: null,
         tokenVersion: user.tokenVersion + 1,
@@ -392,7 +403,9 @@ export class AuthService {
         userId: user.id,
       });
       // Security best practice — invalidate all refresh tokens for this user
-      // on replay detection (suspected theft).
+      // on replay detection (suspected theft). Operating on the user just
+      // loaded; tenant-scoped by id.
+      // eslint-disable-next-line no-untenanted-query
       await this.userRepository.update(user.id, {
         refreshTokenHash: null,
         tokenVersion: user.tokenVersion + 1,
@@ -423,6 +436,9 @@ export class AuthService {
     );
     if (cached) return cached;
 
+    // Profile lookup by user id from the verified JWT; the JWT carries the
+    // tenant scope, so a per-id lookup is correct.
+    // eslint-disable-next-line no-untenanted-query
     const user = await this.userRepository.findOne({
       where: { id: userId, isActive: true },
     });
@@ -435,6 +451,9 @@ export class AuthService {
   }
 
   async logout(userId: string): Promise<{ message: string }> {
+    // Logout by user id from the verified JWT; per-id is sufficient since
+    // user ids are globally unique UUIDs.
+    // eslint-disable-next-line no-untenanted-query
     await this.userRepository.update(userId, {
       refreshTokenHash: null,
       tokenVersion: (await this.bumpVersion(userId)),
@@ -448,6 +467,8 @@ export class AuthService {
   // ─── Private helpers ───────────────────────────────────────────
 
   private async bumpVersion(userId: string): Promise<number> {
+    // Internal helper called from logout(); user id is globally unique.
+    // eslint-disable-next-line no-untenanted-query
     const user = await this.userRepository.findOne({ where: { id: userId } });
     return (user?.tokenVersion ?? 0) + 1;
   }
