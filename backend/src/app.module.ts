@@ -36,6 +36,7 @@ import { AiCopilotModule } from './ai-copilot/ai-copilot.module';
 import { ForecastingModule } from './forecasting/forecasting.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { AnomalyModule } from './anomaly/anomaly.module';
+import { MultiCompanyModule } from './multi-company/multi-company.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -131,6 +132,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     ForecastingModule,
     SchedulingModule,
     AnomalyModule,
+    MultiCompanyModule,
   ],
   providers: [
     {
