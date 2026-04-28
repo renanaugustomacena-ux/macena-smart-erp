@@ -6,6 +6,34 @@ All notable changes to SmartERP are documented here. The project follows [Semant
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-04-29
+
+### Added
+- AI Copilot foundation (Sprint 25; ADR-015): pinned `claude-sonnet-4-6`, prompt caching, ToolRegistry + 10 Sara cockpit tools, per-tenant per-day token cap, eval harness Q1-Q5.
+- RAG over audit + master-data (Sprint 26): `rag_chunks` + ingestion + PII redactor + tenant-scoped retrieval (substring fallback; pgvector ANN deferred).
+- Production Copilot tools + sidebar UI + opt-in flow + eval Q6-Q15 (Sprint 27).
+- Demand forecasting + reorder suggestions (Sprint 28).
+- Greedy production scheduler + CP-SAT sidecar adapter (Sprint 29; CP-SAT live deferred).
+- Z-score anomaly detection + static-rule compliance reasoner (Sprint 30).
+- UniCredit + BPER PSD2 sandbox adapters + SEPA pain.001.001.09 builder (Sprint 31).
+- Cash 30/60/90-day forecast + auto-reconciler heuristic (Sprint 32).
+- Multi-company Phase A: `companies` table + per-entity surface (Sprint 33).
+- Multi-company Phase B: per-Company + tenant rollup consolidation (Sprint 34).
+- SOC 2 Type II audit-prep control matrix (Sprint 35).
+
+### Changed
+- The Copilot UI lands behind an explicit per-tenant opt-in toggle.
+- Conservazione consumers route through ConservazioneOrchestrator (continued from v2.0).
+
+### Security
+- IBAN AES-256-GCM at rest (continued from v2.0).
+- SAML signature pinning + SCIM bearer-token sha-256 hashing (continued from v2.0).
+
+### Notes
+- Industry-benchmarking opt-in (S36) wires into the existing BI projection layer; rollout is gated by per-tenant consent + the Compliance dashboard surface.
+- 6 new ADRs land in v3 (017, 015, 025, 035, 040 — most explicitly written; 010 + 016 + 037 + 019 + DA07 + 011 cross-referenced).
+
+
 ## [2.0.0] — 2026-04-29
 
 ### Added
