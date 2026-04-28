@@ -35,6 +35,7 @@ import { TreasuryModule } from './treasury/treasury.module';
 import { AiCopilotModule } from './ai-copilot/ai-copilot.module';
 import { ForecastingModule } from './forecasting/forecasting.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
+import { AnomalyModule } from './anomaly/anomaly.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -129,6 +130,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     AiCopilotModule,
     ForecastingModule,
     SchedulingModule,
+    AnomalyModule,
   ],
   providers: [
     {
