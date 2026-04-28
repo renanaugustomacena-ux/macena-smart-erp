@@ -1,0 +1,48 @@
+{
+  "name": "SmartERP",
+  "short_name": "SmartERP",
+  "description": "ERP cloud-native per le PMI manifatturiere italiane.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "it",
+  "dir": "ltr",
+  "background_color": "#ffffff",
+  "theme_color": "#0a3d62",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Operatore — postazione di lavoro",
+      "short_name": "Operatore",
+      "url": "/mobile/operator",
+      "description": "Schermata fullscreen per l'operatore di linea (Sprint 19)"
+    },
+    {
+      "name": "Magazzino — picking",
+      "short_name": "Picking",
+      "url": "/mobile/picking",
+      "description": "Schermata di prelievo con percorso ottimizzato"
+    },
+    {
+      "name": "Officina — scan to complete",
+      "short_name": "Scan WO",
+      "url": "/mobile/work-order",
+      "description": "Scansione + avanzamento ordine di produzione"
+    }
+  ]
+}

@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { PwaRegister } from './components/PwaRegister';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -31,6 +32,20 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'it_IT',
   },
+  manifest: '/manifest.webmanifest',
+  applicationName: 'SmartERP',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'SmartERP',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0a3d62',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -44,6 +59,7 @@ export default function RootLayout({
         <div id="app-root" className="min-h-screen bg-gray-50">
           {children}
         </div>
+        <PwaRegister />
       </body>
     </html>
   );
