@@ -201,6 +201,22 @@ jobs:
           # cosign sign --yes \
           #   ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.project }}@${{ steps.push.outputs.digest }}
 
+  # ─── Landing-page convention gate ───────────────────────────────
+  landing-conventions:
+    name: Landing-page · convention checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject emoji / dingbat numeric character references
+        run: |
+          if grep -nrE '&#1[0-9]{4,};' landing-page/ 2>/dev/null; then
+            echo "::error::landing-page/ contains emoji / dingbat numeric character references. Replace with inline SVG icons (portfolio convention)."
+            exit 1
+          fi
+      - name: Require Italian html lang attribute
+        run: |
+          grep -q '<html lang="it"' landing-page/index.html || { echo "::error::landing-page/index.html must declare <html lang=\"it\">"; exit 1; }
+
   # ─── Step 5: Security Scans ─────────────────────────────────────
   security:
     name: Security (deps + SAST + secrets + containers)
