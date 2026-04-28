@@ -23,6 +23,9 @@ import { WarehouseModule } from './warehouse/warehouse.module';
 import { ConservazioneModule } from './conservazione/conservazione.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { PecModule } from './pec/pec.module';
+import { IntrastatModule } from './intrastat/intrastat.module';
+import { MembershipsModule } from './memberships/memberships.module';
+import { CommercialistaModule } from './commercialista/commercialista.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -105,6 +108,9 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     ConservazioneModule,
     WebhooksModule,
     PecModule,
+    IntrastatModule,
+    MembershipsModule,
+    CommercialistaModule,
   ],
   providers: [
     {

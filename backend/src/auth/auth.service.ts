@@ -459,6 +459,53 @@ export class AuthService {
     return profile;
   }
 
+  /**
+   * Mint fresh access + refresh tokens for `userId` carrying an alternate
+   * `tenantId` and `role` (the "switch tenant" flow used by the
+   * Commercialista Portal — plan §31.1 Sprint 16 / S16.3).
+   *
+   * Caller MUST verify that the user holds an active Membership for the
+   * target tenant before invoking this method; this layer trusts its
+   * input and is consequently package-private to MembershipsService.
+   *
+   * Side-effects: bumps `tokenVersion` (invalidates any prior refresh
+   * token), persists the new refresh-hash, resets `sessionCreatedAt`.
+   */
+  async mintTokensForTenantSwitch(
+    userId: string,
+    tenantId: string,
+    role: UserRole,
+  ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+    // User lookup by id from the JWT subject; tenant scope is being
+    // re-established here so the home-tenant filter does not apply.
+    // eslint-disable-next-line no-untenanted-query
+    const user = await this.userRepository.findOne({
+      where: { id: userId, isActive: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+    user.sessionCreatedAt = new Date();
+    const tokens = await this.issueTokens(user, { tenantId, role });
+    user.refreshTokenHash = this.hashForStorage(tokens.refreshToken);
+    await this.userRepository.save(user);
+
+    await this.cacheManager.set(
+      `session:${user.id}`,
+      { userId: user.id, role, tenantId },
+      3600,
+    );
+    this.logger.log({
+      event: 'auth.tenant_switch',
+      outcome: 'success',
+      userId: user.id,
+      tenantId,
+      role,
+    });
+    return tokens;
+  }
+
   async logout(userId: string): Promise<{ message: string }> {
     // Logout by user id from the verified JWT; per-id is sufficient since
     // user ids are globally unique UUIDs.
@@ -484,12 +531,13 @@ export class AuthService {
 
   private async issueTokens(
     user: User,
+    override?: { tenantId?: string; role?: UserRole },
   ): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
     const accessPayload: AccessTokenPayload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
-      tenantId: user.tenantId,
+      role: override?.role ?? user.role,
+      tenantId: override?.tenantId ?? user.tenantId,
     };
     const refreshPayload: RefreshTokenPayload = {
       ...accessPayload,

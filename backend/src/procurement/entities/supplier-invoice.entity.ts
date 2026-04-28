@@ -144,6 +144,20 @@ export class SupplierInvoice {
   @DataClassification('confidential')
   notes: string | null;
 
+  /**
+   * Counterparty country (ISO 3166-1 alpha-2). Optional enrichment used by
+   * the Intrastat aggregator (S16.2) to detect intra-EU acquisitions.
+   * Populated by the PEC ingester when the FatturaPA carries a foreign
+   * `IdPaese`, or manually by the accountant on legacy imports.
+   */
+  @Column({ length: 2, nullable: true })
+  partnerCountry: string | null;
+
+  /** Counterparty VAT number with country prefix (e.g., `DE123456789`). */
+  @Column({ length: 32, nullable: true })
+  @DataClassification('confidential')
+  partnerVatNumber: string | null;
+
   @OneToMany(() => SupplierInvoiceLine, (l) => l.supplierInvoice, {
     cascade: ['insert', 'update'],
   })

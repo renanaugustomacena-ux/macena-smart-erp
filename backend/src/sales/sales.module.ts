@@ -14,6 +14,8 @@ import { Ddt, DdtLine } from './entities/ddt.entity';
 import { ContactActivity } from './entities/contact-activity.entity';
 import { SalesDepthService } from './sales-depth.service';
 import { SalesDepthController } from './sales-depth.controller';
+import { SalesPipelineService } from './sales-pipeline.service';
+import { SalesPipelineController } from './sales-pipeline.controller';
 
 @Module({
   imports: [
@@ -30,8 +32,12 @@ import { SalesDepthController } from './sales-depth.controller';
     InventoryModule,
     MetricsModule,
   ],
-  controllers: [SalesController, SalesDepthController],
-  providers: [SalesService, SalesDepthService],
-  exports: [SalesService, SalesDepthService],
+  controllers: [
+    SalesController,
+    SalesDepthController,
+    SalesPipelineController,
+  ],
+  providers: [SalesService, SalesDepthService, SalesPipelineService],
+  exports: [SalesService, SalesDepthService, SalesPipelineService],
 })
 export class SalesModule {}

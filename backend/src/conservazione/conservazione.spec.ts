@@ -72,36 +72,79 @@ describe('ArubaConservazioneAdapter (S14.5 skeleton — explicit NotImplemented)
   });
 });
 
-describe('InfoCertConservazioneAdapter (S14.5 skeleton — explicit NotImplemented)', () => {
-  const adapter = new InfoCertConservazioneAdapter();
+describe('InfoCertConservazioneAdapter (S16.4 — sandbox + production split)', () => {
+  // Sandbox mode is the default; the adapter returns deterministic
+  // synthetic receipts so the orchestrator failover path can be exercised
+  // ahead of the Sprint 23 production wiring.
+  describe('sandbox mode (default)', () => {
+    let saved: string | undefined;
+    let adapter: InfoCertConservazioneAdapter;
+    beforeAll(() => {
+      saved = process.env.CONSERVAZIONE_INFOCERT_MODE;
+      process.env.CONSERVAZIONE_INFOCERT_MODE = 'sandbox';
+      adapter = new InfoCertConservazioneAdapter();
+    });
+    afterAll(() => {
+      process.env.CONSERVAZIONE_INFOCERT_MODE = saved;
+    });
 
-  it('throws NotImplementedException on send()', async () => {
-    await expect(
-      adapter.send({
+    it('send() returns a sandbox VersamentoReceipt', async () => {
+      const r = await adapter.send({
         documentBody: Buffer.from('<xml/>'),
         documentMimeType: 'application/xml',
         index: anyIndex(),
         tenantId: 'tenant-1',
-      }),
-    ).rejects.toBeInstanceOf(NotImplementedException);
+      });
+      expect(r.vendorId).toBe('infocert');
+      expect(r.versamentoId).toMatch(/^IC-SBX-/);
+    });
+
+    it('fetchReceipt() returns a sandbox receipt', async () => {
+      const r = await adapter.fetchReceipt('vid-x');
+      expect(r.versamentoId).toBe('vid-x');
+      expect(r.vendorDocClass).toBe('sandbox');
+    });
+
+    it('search() returns an empty list', async () => {
+      const list = await adapter.search({ tenantId: 'tenant-1' });
+      expect(list).toEqual([]);
+    });
+
+    it('exhibit() still throws NotImplementedException (Sprint 23)', async () => {
+      await expect(adapter.exhibit('vid-x')).rejects.toBeInstanceOf(
+        NotImplementedException,
+      );
+    });
   });
 
-  it('throws NotImplementedException on fetchReceipt()', async () => {
-    await expect(adapter.fetchReceipt('vid-x')).rejects.toBeInstanceOf(
-      NotImplementedException,
-    );
-  });
+  describe('production mode (Sprint 23 schedule)', () => {
+    let saved: string | undefined;
+    let adapter: InfoCertConservazioneAdapter;
+    beforeAll(() => {
+      saved = process.env.CONSERVAZIONE_INFOCERT_MODE;
+      process.env.CONSERVAZIONE_INFOCERT_MODE = 'production';
+      adapter = new InfoCertConservazioneAdapter();
+    });
+    afterAll(() => {
+      process.env.CONSERVAZIONE_INFOCERT_MODE = saved;
+    });
 
-  it('throws NotImplementedException on exhibit()', async () => {
-    await expect(adapter.exhibit('vid-x')).rejects.toBeInstanceOf(
-      NotImplementedException,
-    );
-  });
+    it('send() throws NotImplementedException', async () => {
+      await expect(
+        adapter.send({
+          documentBody: Buffer.from('<xml/>'),
+          documentMimeType: 'application/xml',
+          index: anyIndex(),
+          tenantId: 'tenant-1',
+        }),
+      ).rejects.toBeInstanceOf(NotImplementedException);
+    });
 
-  it('throws NotImplementedException on search()', async () => {
-    await expect(
-      adapter.search({ tenantId: 'tenant-1' }),
-    ).rejects.toBeInstanceOf(NotImplementedException);
+    it('search() throws NotImplementedException', async () => {
+      await expect(
+        adapter.search({ tenantId: 'tenant-1' }),
+      ).rejects.toBeInstanceOf(NotImplementedException);
+    });
   });
 });
 
