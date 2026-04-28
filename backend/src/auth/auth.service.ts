@@ -27,6 +27,7 @@ import {
   checkPasswordBreach,
   validatePasswordPolicy,
 } from '../common/password-policy';
+import { DataClassification } from '../common/data-classification.decorator';
 
 /**
  * Account-lockout policy (gap G-05, NIST SP 800-63B §5.2.2):
@@ -65,25 +66,32 @@ export class User {
   id: string;
 
   @Column({ length: 100 })
+  @DataClassification('confidential')
   firstName: string;
 
   @Column({ length: 100 })
+  @DataClassification('confidential')
   lastName: string;
 
   @Index({ unique: true })
   @Column({ length: 255 })
+  @DataClassification('confidential')
   email: string;
 
   @Column()
+  @DataClassification('restricted')
   passwordHash: string;
 
   @Column({ length: 255 })
+  @DataClassification('confidential')
   companyName: string;
 
   @Column({ length: 20, nullable: true })
+  @DataClassification('confidential')
   phone: string;
 
   @Column({ length: 11, nullable: true })
+  @DataClassification('confidential')
   partitaIva: string;
 
   @Column({ type: 'enum', enum: UserRole, default: UserRole.ADMIN })
@@ -100,6 +108,7 @@ export class User {
    * with high entropy; we store it hashed mainly to defend against DB dumps.
    */
   @Column({ nullable: true })
+  @DataClassification('restricted')
   refreshTokenHash: string | null;
 
   /**

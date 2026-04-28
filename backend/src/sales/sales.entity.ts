@@ -9,6 +9,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
+import { DataClassification } from '../common/data-classification.decorator';
 
 export enum CustomerType {
   BUSINESS = 'business',
@@ -41,46 +42,60 @@ export class Customer {
   tenantId: string;
 
   @Column({ length: 50 })
+  @DataClassification('confidential')
   code: string;
 
   @Column({ length: 255 })
+  @DataClassification('confidential')
   name: string;
 
   @Column({ type: 'enum', enum: CustomerType, default: CustomerType.BUSINESS })
+  @DataClassification('confidential')
   customerType: CustomerType;
 
   @Column({ length: 11, nullable: true })
+  @DataClassification('confidential')
   vatNumber: string;
 
   @Column({ length: 16, nullable: true })
+  @DataClassification('confidential')
   fiscalCode: string;
 
   /** SDI Codice Destinatario for FatturaPA routing. '0000000' if PEC-only. */
   @Column({ length: 7, nullable: true })
+  @DataClassification('confidential')
   sdiDestinationCode: string;
 
   @Column({ length: 255, nullable: true })
+  @DataClassification('confidential')
   pecEmail: string;
 
   @Column({ length: 255, nullable: true })
+  @DataClassification('confidential')
   email: string;
 
   @Column({ length: 30, nullable: true })
+  @DataClassification('confidential')
   phone: string;
 
   @Column({ type: 'text', nullable: true })
+  @DataClassification('confidential')
   address: string;
 
   @Column({ length: 100, nullable: true })
+  @DataClassification('confidential')
   city: string;
 
   @Column({ length: 5, nullable: true })
+  @DataClassification('confidential')
   postalCode: string;
 
   @Column({ length: 2, nullable: true })
+  @DataClassification('confidential')
   province: string;
 
   @Column({ length: 2, default: 'IT' })
+  @DataClassification('public')
   country: string;
 
   /** Default IVA rate (%) applied to sales; can be overridden per line. */

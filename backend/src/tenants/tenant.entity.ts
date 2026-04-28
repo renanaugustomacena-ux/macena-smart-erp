@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
+import { DataClassification } from '../common/data-classification.decorator';
 
 /**
  * SubscriptionPlan enum maps to SmartERP commercial tiers.
@@ -39,6 +40,7 @@ export class Tenant {
   id: string;
 
   @Column({ length: 255 })
+  @DataClassification('confidential')
   name: string;
 
   /**
@@ -46,12 +48,14 @@ export class Tenant {
    * pre-registration (foreign companies, regime forfettario with no IVA).
    */
   @Column({ length: 11, nullable: true })
+  @DataClassification('confidential')
   vatNumber: string;
 
   /**
    * Italian Codice Fiscale, 11 numeric (PI) or 16 alphanumeric (CF persona fisica).
    */
   @Column({ length: 16, nullable: true })
+  @DataClassification('confidential')
   fiscalCode: string;
 
   /**
@@ -59,27 +63,34 @@ export class Tenant {
    * Default '0000000' when only PEC is used for e-invoice delivery.
    */
   @Column({ length: 7, nullable: true })
+  @DataClassification('confidential')
   sdiDestinationCode: string;
 
   /**
    * PEC (Posta Elettronica Certificata) mailbox for legal/fiscal communications.
    */
   @Column({ length: 255, nullable: true })
+  @DataClassification('confidential')
   pecEmail: string;
 
   @Column({ type: 'text', nullable: true })
+  @DataClassification('confidential')
   billingAddress: string;
 
   @Column({ length: 100, nullable: true })
+  @DataClassification('confidential')
   billingCity: string;
 
   @Column({ length: 5, nullable: true })
+  @DataClassification('confidential')
   billingPostalCode: string;
 
   @Column({ length: 2, nullable: true })
+  @DataClassification('confidential')
   billingProvince: string;
 
   @Column({ length: 2, default: 'IT' })
+  @DataClassification('public')
   billingCountry: string;
 
   @Column({ type: 'enum', enum: SubscriptionPlan, default: SubscriptionPlan.BASE })
@@ -100,6 +111,7 @@ export class Tenant {
    *           "iva_default": 22, "accounting_template": "pc_iv_direttiva_cee" }
    */
   @Column({ type: 'jsonb', nullable: true })
+  @DataClassification('restricted')
   settings: Record<string, unknown>;
 
   @CreateDateColumn()
