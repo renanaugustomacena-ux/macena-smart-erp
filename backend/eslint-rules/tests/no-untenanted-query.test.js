@@ -1,8 +1,13 @@
 /**
  * RuleTester-based unit test for the `no-untenanted-query` ESLint rule.
  *
- * Run from repo root:
- *   node backend/eslint-rules/no-untenanted-query.test.js
+ * Lives under `eslint-rules/tests/` (not `eslint-rules/`) so ESLint's
+ * `--rulesdir eslint-rules` does NOT load this file as a rule.
+ *
+ * Run from backend/:
+ *   npm run lint:rule-test
+ *   # or:
+ *   node eslint-rules/tests/no-untenanted-query.test.js
  *
  * Exits 0 on success, non-zero on rule-behaviour regression.
  */
@@ -10,7 +15,7 @@
 'use strict';
 
 const { RuleTester } = require('eslint');
-const rule = require('./no-untenanted-query');
+const rule = require('../no-untenanted-query');
 
 const ruleTester = new RuleTester({
   parserOptions: { ecmaVersion: 2022, sourceType: 'module' },
