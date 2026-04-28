@@ -26,6 +26,7 @@ import { PecModule } from './pec/pec.module';
 import { IntrastatModule } from './intrastat/intrastat.module';
 import { MembershipsModule } from './memberships/memberships.module';
 import { CommercialistaModule } from './commercialista/commercialista.module';
+import { HrModule } from './hr/hr.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -111,6 +112,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     IntrastatModule,
     MembershipsModule,
     CommercialistaModule,
+    HrModule,
   ],
   providers: [
     {
