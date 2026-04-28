@@ -6,15 +6,32 @@ import { Customer, SalesOrder } from './sales.entity';
 import { Warehouse } from '../inventory/inventory.entity';
 import { InventoryModule } from '../inventory/inventory.module';
 import { MetricsModule } from '../metrics/metrics.module';
+import {
+  Quotation,
+  QuotationLine,
+} from './entities/quotation.entity';
+import { Ddt, DdtLine } from './entities/ddt.entity';
+import { ContactActivity } from './entities/contact-activity.entity';
+import { SalesDepthService } from './sales-depth.service';
+import { SalesDepthController } from './sales-depth.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Customer, SalesOrder, Warehouse]),
+    TypeOrmModule.forFeature([
+      Customer,
+      SalesOrder,
+      Warehouse,
+      Quotation,
+      QuotationLine,
+      Ddt,
+      DdtLine,
+      ContactActivity,
+    ]),
     InventoryModule,
     MetricsModule,
   ],
-  controllers: [SalesController],
-  providers: [SalesService],
-  exports: [SalesService],
+  controllers: [SalesController, SalesDepthController],
+  providers: [SalesService, SalesDepthService],
+  exports: [SalesService, SalesDepthService],
 })
 export class SalesModule {}

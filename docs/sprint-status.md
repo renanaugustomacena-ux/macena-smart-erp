@@ -138,6 +138,42 @@ Verified
 - Procurement test suites 4/4 pass — 122 tests total (state-machines 48 + gr-si.fsm 39 + request-for-quote.fsm 23 + three-way-match 12).
 - Pre-existing TS errors in `app.module.ts`, `audit/audit.interceptor.ts`, `inventory/inventory.service.ts`, `sales/sales.service.ts` remain (documented Sprint 1; out of scope this iteration). Procurement module clean of new TS errors.
 
+## Sprint 4 (= plan §31.1 Sprint 15 — Sales depth)
+
+- **Sprint number**: 4 (autonomous-loop) / 15 (plan §31.1)
+- **Sprint window**: 2026-W24 to 2026-W25
+- **Status**: completed (all 5 stories landed)
+- **Sprint demo subject**: Quotation → SalesOrder → DDT → fattura-differita prepare loop with ContactActivity timeline.
+
+| ID | Subject | Status | Owner | PR |
+|---|---|---|---|---|
+| S15.1 | Quotation entity + state machine + send-to-customer flow | completed — entity at `src/sales/entities/quotation.entity.ts` (Quotation header + QuotationLine; bigint cents per R-D04; @DataClassification on quotationNumber/notes/description; tenantId-first composite indexes per R-D01); 7-state FSM `state-machines/quotation.fsm.ts` (DRAFT → SENT → REVISED → ACCEPTED → CONVERTED + REJECTED + EXPIRED); service methods createQuotation/getQuotation/sendQuotation/reviseQuotation/acceptQuotation/rejectQuotation/expireQuotation; REST routes under `/api/sales/quotations/*`. | autonomous-agent | (this iteration) |
+| S15.2 | DDT entity + state machine + per-shipment generator | completed — entity at `src/sales/entities/ddt.entity.ts` (Ddt header + DdtLine; 9-state enum draft/issued/in_transit/delivered/invoiced/returned/lost/disputed/cancelled; 7-causale enum vendita/conto_visione/conto_lavorazione/reso/tentata_vendita/campionatura/altro per Italian DPR 472/96 + DPR 633/1972 art. 21; serialIds JSONB; lotId optional; @DataClassification on ddtNumber/trackingNumber/notes/description); FSM at `state-machines/ddt.fsm.ts`; service methods createDdt/getDdt/issueDdt/markDdtInTransit/markDdtDelivered/cancelDdt/returnDdt/markDdtLost/disputeDdt/invoiceDdt; REST routes under `/api/sales/ddts/*`. | autonomous-agent | (this iteration) |
+| S15.3 | ContactActivity log | completed — entity at `src/sales/entities/contact-activity.entity.ts` (6-kind enum call/email/meeting/demo/visit/note; 3-direction enum inbound/outbound/internal; polymorphic linkedEntityType pointing to customer/quotation/sales_order/invoice/ddt/rfq/complaint; tags JSONB; tenantId-first composite indexes); service methods logActivity/listActivities (with kind/customer/linked-entity filters); REST routes under `/api/sales/activities`. | autonomous-agent | (this iteration) |
+| S15.4 | Quotation → SalesOrder conversion | completed — `convertQuotationToSalesOrder(tenantId, quotationId, {orderDate?})` rolls an ACCEPTED quotation into a draft SalesOrder (denormalised lines on the existing SalesOrder JSONB column), pins the SalesOrder id back onto the quotation, transitions the quotation to `converted`. Idempotent on `convertedToSalesOrderId` (returns the existing SalesOrder on second call). REST route `POST /api/sales/quotations/:id/convert`. | autonomous-agent | (this iteration) |
+| S15.5 | DDT → Invoice handoff (fattura differita per DPR 633/1972 art. 21) | completed — `prepareInvoiceFromDdts(tenantId, ddtIds[])` aggregates a set of DELIVERED DDTs (same customer; tenant-scoped) into the payload AccountingService will turn into a fattura differita. Returns `{customerId, ddts:[{id,ddtNumber,issueDate}], lines:[{productId,description,quantity,unitOfMeasure,ddtRef}]}` ready for invoice creation; the invoice's `<DatiDDT>` block quotes the DDT references per FatturaPA v1.2.2 schema. Companion `invoiceDdt(tenantId, id, invoiceId)` flips the DDT to `invoiced` once AccountingService has issued the invoice. Refuses mixed-customer bundles + non-delivered DDTs. REST routes `POST /api/sales/ddts/prepare-invoice` + `POST /api/sales/ddts/:id/invoice`. | autonomous-agent | (this iteration) |
+
+### Sprint 4 deliverables this iteration
+
+New files
+- `backend/src/sales/entities/quotation.entity.ts`.
+- `backend/src/sales/entities/ddt.entity.ts`.
+- `backend/src/sales/entities/contact-activity.entity.ts`.
+- `backend/src/sales/state-machines/quotation.fsm.ts` + `ddt.fsm.ts`.
+- `backend/src/sales/state-machines/sales-depth.fsm.spec.ts` (41 tests, all green).
+- `backend/src/sales/sales-depth.service.ts`.
+- `backend/src/sales/sales-depth.controller.ts`.
+- `backend/src/sales/sales-depth.dto.ts`.
+- `backend/src/migrations/1714400000000-SalesDepthSchema.ts` (M-017) — 5 tables + 6 enums; tenantId-first composite indexes per R-D01.
+
+Modified
+- `backend/src/sales/sales.module.ts` — wires Quotation, QuotationLine, Ddt, DdtLine, ContactActivity into TypeOrmModule.forFeature; registers SalesDepthService + SalesDepthController.
+
+Verified
+- ESLint --rulesdir eslint-rules over the new sales-depth files: 0 R-D02 violations.
+- 41/41 FSM tests pass (24 quotation + 17 DDT).
+- tsc clean over new code (pre-existing errors in app.module / audit / inventory / sales.service unchanged).
+
 ## Loop budget + halt awareness
 
 - Halt on: user prompt; sprint completion; hard error (CI broken >2 iterations); per-day cost cap.
@@ -149,3 +185,4 @@ Verified
 - 2026-04-28 i13: S14.5 done — ADR-016 (Conservazione second-vendor doctrine: Aruba primary + InfoCert backup; CAD artt. 43-44 + DPCM 3/12/2013 citations). ConservazioneAdapter port + ArubaConservazioneAdapter + InfoCertConservazioneAdapter skeletons (NotImplemented; doc-pointers to Sprint 22 + 23). ConservazioneRegistry. ConservazioneModule wired into AppModule. 12/12 specs pass.
 - 2026-04-28 i14: S14.6 done — ADR-037 (webhook delivery: HMAC SHA-256 signing à la Stripe/GitHub; transactional outbox + bounded exponential retry + DLQ + storm-trip auto-disable + 410/404/429 special handling + CloudEvents 1.0 envelope). 4 entities + migration M-016. Pure-logic HmacSigner (8 tests) + RetryPolicy (24 tests) + dispatchOnce (8 tests). WebhookHttpTransport port for Sprint 24 live worker. WebhooksModule wired into AppModule. 40/40 webhook specs pass; lint clean.
 - 2026-04-28 i15: S14.4 done — PEC passive-cycle ingester skeleton. PecMailbox port + ImapPecMailbox skeleton (live in Sprint 24). Pure-logic parseFatturaPa() over FPA12 envelopes (10 tests covering single-line, namespace-prefixed tags, CDATA, multi-line, Natura non-taxable, missing mandatory). PecIngestService.listFatturaPaCandidates orchestrator (6 tests covering valid, malformed, .p7m signed, non-XML, no-mark-seen invariant, mixed mailbox). BullMQ producer + processor skeleton (mirrors InvoiceSdiProcessor pattern with `not_configured` outcome until Sprint 24 wires the live downstream call). PecModule wired into AppModule. 15/15 specs pass; lint clean. **Sprint 3 closes**: all 6 stories landed (S14.1..S14.6); next is Sprint 4 = plan §31.1 Sprint 15 (Sales depth: Quotation + DDT + ContactActivity).
+- 2026-04-28 i16: Sprint 4 opens and closes — Sales depth. All 5 stories (S15.1 Quotation, S15.2 DDT, S15.3 ContactActivity, S15.4 Quotation→SalesOrder conversion, S15.5 DDT→fattura-differita prepare) landed in one logical change set. 3 entities + 2 FSMs (41 spec cases green) + migration M-017 (5 tables + 6 enums). New SalesDepthService + SalesDepthController side-by-side with the legacy SalesService — 21 new REST endpoints under `/api/sales/{quotations,ddts,activities}/*`. tsc clean, lint clean over new code.
