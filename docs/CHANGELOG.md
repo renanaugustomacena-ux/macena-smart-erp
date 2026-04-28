@@ -6,6 +6,26 @@ All notable changes to SmartERP are documented here. The project follows [Semant
 
 ## [Unreleased]
 
+## [4.0.0] — 2026-04-29
+
+### Added
+- Marketplace foundations + 7 launch partners (Sprints 37-38; ADR-045 deferred): packages catalogue, per-tenant installations, ISO 9001 / FP scheduling / Odette EDI / OPC-UA / Shopify / WooCommerce / Amazon Vendor Central seed.
+- Active-passive multi-region (Sprints 39-40; ADR-041): eu-south-1 primary + eu-west-1 hot standby; documented failover runbook + quarterly DR drill cadence.
+- DE / ES / FR fiscal feasibility study (Sprint 41) — DE prioritised first (Sprint 52 target).
+- OpenAPI v1 snapshot + SDK quarterly release cycle (Sprint 42; ADR-035).
+- IOSS validator + foreign-currency converter (Sprint 43).
+- Tenant-sharding prep: ADR-042 codifying the Stage 5a/5b path (Sprint 44).
+- ESG Scope 1+2 + PDF report (Sprint 45) — ESRS E1 + Italian 2024 emission factors.
+- Mobile-native decision: continue PWA through v5 (Sprint 46; ADR-044 supersedes ADR-026).
+- Q2 2026 DR drill v6 + pentest v8 report (Sprint 47).
+
+### Changed
+- Conservazione orchestrator + InfoCert sandbox-mode continue from v3.
+
+### Notes
+- 200 customers target (S48.5) is the GTM milestone closing v4.
+- Sprint window 14-48 spans the 24-month roadmap from plan §31.
+
 ## [3.0.0] — 2026-04-29
 
 ### Added
