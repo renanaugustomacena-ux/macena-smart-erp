@@ -18,23 +18,30 @@
 | S1.1 | Apply ESLint rule `@smarterp/no-untenanted-query` | pending | autonomous-agent | — |
 | S1.2 | Migration M-001: tenantId index audit + fix | pending | autonomous-agent | — |
 | S1.3 | DataClassification decorator audit | pending | autonomous-agent | — |
-| S1.4 | Argon2id transparent rehash (T-19) | partial — code present (auth.service.ts:242), import broken in password.util.ts (`@node-rs/argon2` API drift) | autonomous-agent | — |
+| S1.4 | Argon2id transparent rehash (T-19) | completed — fixed `@node-rs/argon2` import (`argon2id` → `Algorithm.Argon2id`); extended `password.util.spec.ts` to 8 tests (2 legacy detection + 6 real Argon2id round-trip: hash format, verify true/false, empty/malformed inputs, salting). Argon2id transparent-rehash on legacy bcrypt verify already in `auth.service.ts:242`. | autonomous-agent | (this iteration) |
 | S1.5 | Per-IP throttle on `/auth/login` (T-06) + lockout backlog (T-07) | completed — verified by `auth.service.lockout.spec.ts` (7 tests green); throttle in `auth.controller.ts:38,57` + `app.module.ts` named "auth" throttler (5/min) | autonomous-agent | (this iteration) |
 | S1.6 | ADRs 001-007 fully written under `docs/adrs/` | completed | autonomous-agent | aafdb0d |
 | S1.7 | ProblemDetailsFilter test coverage | completed — `problem-details.filter.spec.ts` (22 tests green) covering status mapping, body extraction, correlation propagation, instance/type composition, 5xx logging | autonomous-agent | (this iteration) |
 | S1.8 | Sprint demo: cross-tenant rejected at 4 layers (E2E test) | pending | autonomous-agent | — |
 
-## Pre-existing test failures (out of S1.5/S1.7 scope; queued for next iteration)
+## Pre-existing test failures still queued
 
-- `src/common/password.util.spec.ts` — fails to compile. `password.util.ts:18` imports `argon2id` from `@node-rs/argon2` but that name is not exported by the installed version. Likely API drift; needs migration to `Algorithm.Argon2id`. Belongs to S1.4 (Argon2id rehash) follow-up.
-- `src/accounting/fatturapa/fatturapa-adapter.spec.ts` — 1 assertion fails ("produces FPA12 format for PA with split payment"). Pre-existing data drift; belongs to a fatturapa-adapter sprint slot (Sprint 11+).
+- `src/accounting/fatturapa/fatturapa-adapter.spec.ts` — 1 assertion fails ("produces FPA12 format for PA with split payment"). Belongs to a fatturapa-adapter sprint slot (Sprint 11+).
+
+(`src/common/password.util.spec.ts` resolved this iteration — see S1.4.)
+
+## Test totals
+
+- Full suite: 6 of 7 suites pass; 59 of 60 tests pass.
+- The remaining 1 failing test is the pre-existing FatturaPA-adapter assertion above.
 
 ## Loop log (per-iteration)
 
 - 2026-04-28 i01: plan completed (15077 lines, 747K); concatenated to `/home/renan/.claude/plans/smarterp-product-doctrine-and-build-plan.md`. Tasks 1-5 closed.
 - 2026-04-28 i02: scaffolding pass — created `docs/adrs/` directory; created this `sprint-status.md`; authored baseline ADRs 001-007 (Tyree-Akerman format); two local commits (8259bf3 SaaS-strip; aafdb0d ADR scaffold). Pushed `7188d79..aafdb0d` to origin/main.
 - 2026-04-28 i03: S1.5 + S1.7 confirmation pass. (a) Verified S1.5 already implemented in code (auth.controller `@Throttle({auth:{...}})`, auth.service MAX_FAILED_ATTEMPTS=5 / LOCKOUT_MINUTES=15, HTTP 423 on retry during lock window). (b) Wrote `problem-details.filter.spec.ts` (22 tests green) and `auth.service.lockout.spec.ts` (7 tests green; `verifyPassword` mocked); 29 new tests overall. (c) Two minimal source fixes to make TypeScript strict-mode happy: `auth.service.ts` User.refreshTokenHash → `string | null` (matches `@Column({nullable:true})`), and `HttpStatus.LOCKED` → literal `423` (RFC 4918 §11.3; the enum doesn't define LOCKED in `@nestjs/common` v10). No behaviour change.
-- 2026-04-28 i04 (next): catch up S1.4 — fix `password.util.ts` import to use `Algorithm.Argon2id` from current `@node-rs/argon2` API; revive `password.util.spec.ts`. Then S1.1 (ESLint rule), S1.2 (index audit), S1.3 (DataClassification audit), S1.8 (cross-tenant E2E demo).
+- 2026-04-28 i04: S1.4 done — fixed `password.util.ts` import to `Algorithm.Argon2id`; extended `password.util.spec.ts` from 2 to 8 tests (real Argon2id round-trip: hash format match, verify true/false, empty/malformed inputs, salting). Full suite up to 59/60.
+- 2026-04-28 i05 (next): S1.1 (custom ESLint rule `@smarterp/no-untenanted-query`), S1.2 (migration M-001 tenantId-index audit), S1.3 (DataClassification decorator audit), S1.8 (cross-tenant E2E demo). S1.1 is the largest single story in the sprint.
 
 ## Loop budget + halt awareness
 

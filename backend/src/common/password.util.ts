@@ -15,11 +15,15 @@
  * successful verification the caller is expected to re-hash with argon2id.
  */
 
-import { argon2id, verify as argon2Verify, hash as argon2Hash } from '@node-rs/argon2';
+import { Algorithm, verify as argon2Verify, hash as argon2Hash } from '@node-rs/argon2';
 
-/** OWASP 2024 minimum interactive-login profile. */
+/**
+ * OWASP 2024 minimum interactive-login profile.
+ * Algorithm.Argon2id is the upstream default (per @node-rs/argon2 docs) but
+ * we set it explicitly to lock the choice.
+ */
 const ARGON2_PARAMS = {
-  algorithm: argon2id,
+  algorithm: Algorithm.Argon2id,
   memoryCost: 19_456, // KiB — ~19 MiB
   timeCost: 2,
   parallelism: 1,
