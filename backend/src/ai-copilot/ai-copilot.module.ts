@@ -13,6 +13,10 @@ import { SupplierInvoice } from '../procurement/entities/supplier-invoice.entity
 import { Customer } from '../sales/sales.entity';
 import { IntrastatDeclaration } from '../intrastat/entities/intrastat-declaration.entity';
 import { ReadModelRow } from '../bi/entities/read-model-row.entity';
+import { Product } from '../inventory/inventory.entity';
+import { RagChunk } from './rag/entities/rag-chunk.entity';
+import { RagService } from './rag/rag.service';
+import { RagController } from './rag/rag.controller';
 
 @Module({
   imports: [
@@ -24,9 +28,11 @@ import { ReadModelRow } from '../bi/entities/read-model-row.entity';
       Customer,
       IntrastatDeclaration,
       ReadModelRow,
+      Product,
+      RagChunk,
     ]),
   ],
-  controllers: [CopilotController],
+  controllers: [CopilotController, RagController],
   providers: [
     AnthropicClient,
     ...SARA_TOOL_PROVIDERS,
@@ -37,7 +43,8 @@ import { ReadModelRow } from '../bi/entities/read-model-row.entity';
     },
     CopilotService,
     CopilotEvalHarness,
+    RagService,
   ],
-  exports: [CopilotService, ToolRegistry, CopilotEvalHarness],
+  exports: [CopilotService, ToolRegistry, CopilotEvalHarness, RagService],
 })
 export class AiCopilotModule {}
