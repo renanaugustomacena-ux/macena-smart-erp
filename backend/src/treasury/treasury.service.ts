@@ -18,6 +18,8 @@ import {
   validateIban,
 } from './iban.util';
 import { IntesaPsd2Adapter } from './psd2/intesa.adapter';
+import { UnicreditPsd2Adapter } from './psd2/unicredit.adapter';
+import { BperPsd2Adapter } from './psd2/bper.adapter';
 import { Psd2Adapter } from './psd2/psd2.adapter';
 
 @Injectable()
@@ -28,6 +30,8 @@ export class TreasuryService {
     @InjectRepository(BankTransaction)
     private readonly txRepo: Repository<BankTransaction>,
     private readonly intesa: IntesaPsd2Adapter,
+    private readonly unicredit: UnicreditPsd2Adapter,
+    private readonly bper: BperPsd2Adapter,
   ) {}
 
   // ─── BankAccount CRUD ──────────────────────────────────
@@ -193,9 +197,13 @@ export class TreasuryService {
     switch (provider) {
       case 'intesa':
         return this.intesa;
+      case 'unicredit':
+        return this.unicredit;
+      case 'bper':
+        return this.bper;
       default:
         throw new BadRequestException(
-          `PSD2 adapter for '${provider}' not yet wired (planned Sprint 31)`,
+          `PSD2 adapter for '${provider}' not yet wired`,
         );
     }
   }
