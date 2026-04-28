@@ -29,6 +29,7 @@ import { CommercialistaModule } from './commercialista/commercialista.module';
 import { HrModule } from './hr/hr.module';
 import { BiModule } from './bi/bi.module';
 import { ComplianceModule } from './compliance/compliance.module';
+import { IntegrationsModule } from './integrations/integrations.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -117,6 +118,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     HrModule,
     BiModule,
     ComplianceModule,
+    IntegrationsModule,
   ],
   providers: [
     {
