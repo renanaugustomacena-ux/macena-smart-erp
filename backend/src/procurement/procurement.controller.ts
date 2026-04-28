@@ -14,15 +14,21 @@ import { TenantScopeGuard } from '../auth/guards/tenant-scope.guard';
 import { ProcurementService } from './procurement.service';
 import {
   ApprovePurchaseRequisitionDto,
+  ApproveSupplierInvoiceDto,
   AwardRfqDto,
   CancelPurchaseOrderDto,
   ConvertPurchaseRequisitionDto,
   ConvertRfqToPoDto,
+  CreateGoodsReceiptDto,
   CreatePurchaseOrderDto,
   CreatePurchaseRequisitionDto,
   CreateRequestForQuoteDto,
+  CreateSupplierInvoiceDto,
+  DisputeSupplierInvoiceDto,
+  InspectGoodsReceiptDto,
   RecordSupplierQuoteDto,
   RejectPurchaseRequisitionDto,
+  RunMatchDto,
   SendRequestForQuoteDto,
 } from './procurement.dto';
 
@@ -221,5 +227,129 @@ export class ProcurementController {
     @Body() dto: ConvertRfqToPoDto,
   ) {
     return this.svc.convertRfqToPo(req.user.tenantId, id, dto);
+  }
+
+  // ─── GoodsReceipt (S14.1) ─────────────────────────────────────
+
+  @Post('goods-receipts')
+  @ApiOperation({ summary: 'Create a Goods Receipt against a PO (DRAFT)' })
+  async createGoodsReceipt(
+    @Req() req: RequestWithUser,
+    @Body() dto: CreateGoodsReceiptDto,
+  ) {
+    return this.svc.createGoodsReceipt(req.user.tenantId, dto);
+  }
+
+  @Get('goods-receipts/:id')
+  @ApiOperation({ summary: 'Get a Goods Receipt by id' })
+  async getGoodsReceipt(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.getGoodsReceipt(req.user.tenantId, id);
+  }
+
+  @Post('goods-receipts/:id/confirm')
+  @ApiOperation({
+    summary:
+      'Confirm a Goods Receipt (triggers downstream stock movements in S15.x)',
+  })
+  async confirmGoodsReceipt(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.confirmGoodsReceipt(req.user.tenantId, id);
+  }
+
+  @Post('goods-receipts/:id/inspect')
+  @ApiOperation({
+    summary: 'Record QC inspection results (per-line accept/reject quantities)',
+  })
+  async inspectGoodsReceipt(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InspectGoodsReceiptDto,
+  ) {
+    return this.svc.inspectGoodsReceipt(req.user.tenantId, id, dto);
+  }
+
+  @Post('goods-receipts/:id/reject')
+  @ApiOperation({ summary: 'Reject a Goods Receipt entirely' })
+  async rejectGoodsReceipt(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.rejectGoodsReceipt(req.user.tenantId, id);
+  }
+
+  // ─── SupplierInvoice (S14.2 + S14.3) ──────────────────────────
+
+  @Post('supplier-invoices')
+  @ApiOperation({ summary: 'Create a Supplier Invoice (RECEIVED)' })
+  async createSupplierInvoice(
+    @Req() req: RequestWithUser,
+    @Body() dto: CreateSupplierInvoiceDto,
+  ) {
+    return this.svc.createSupplierInvoice(req.user.tenantId, dto);
+  }
+
+  @Get('supplier-invoices/:id')
+  @ApiOperation({ summary: 'Get a Supplier Invoice by id' })
+  async getSupplierInvoice(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.getSupplierInvoice(req.user.tenantId, id);
+  }
+
+  @Post('supplier-invoices/:id/match')
+  @ApiOperation({
+    summary:
+      'Run the 3-way match (PO ↔ GR ↔ SI). Sets status to MATCHED or DISPUTED.',
+  })
+  async runMatch(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RunMatchDto,
+  ) {
+    return this.svc.runMatch(req.user.tenantId, id, dto);
+  }
+
+  @Post('supplier-invoices/:id/approve')
+  @ApiOperation({ summary: 'Approve a matched Supplier Invoice for payment' })
+  async approveSupplierInvoice(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ApproveSupplierInvoiceDto,
+  ) {
+    return this.svc.approveSupplierInvoice(req.user.tenantId, id, dto);
+  }
+
+  @Post('supplier-invoices/:id/dispute')
+  @ApiOperation({ summary: 'Mark a Supplier Invoice as disputed' })
+  async disputeSupplierInvoice(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DisputeSupplierInvoiceDto,
+  ) {
+    return this.svc.disputeSupplierInvoice(req.user.tenantId, id, dto);
+  }
+
+  @Post('supplier-invoices/:id/reject')
+  @ApiOperation({ summary: 'Reject a Supplier Invoice (terminal)' })
+  async rejectSupplierInvoice(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.rejectSupplierInvoice(req.user.tenantId, id);
+  }
+
+  @Post('supplier-invoices/:id/cancel')
+  @ApiOperation({ summary: 'Cancel a Supplier Invoice (terminal)' })
+  async cancelSupplierInvoice(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.cancelSupplierInvoice(req.user.tenantId, id);
   }
 }

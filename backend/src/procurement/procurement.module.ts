@@ -13,6 +13,14 @@ import {
   RequestForQuoteLine,
   RequestForQuoteQuote,
 } from './entities/request-for-quote.entity';
+import {
+  GoodsReceipt,
+  GoodsReceiptLine,
+} from './entities/goods-receipt.entity';
+import {
+  SupplierInvoice,
+  SupplierInvoiceLine,
+} from './entities/supplier-invoice.entity';
 import { ProcurementService } from './procurement.service';
 import { ProcurementController } from './procurement.controller';
 
@@ -26,6 +34,10 @@ import { ProcurementController } from './procurement.controller';
       RequestForQuote,
       RequestForQuoteLine,
       RequestForQuoteQuote,
+      GoodsReceipt,
+      GoodsReceiptLine,
+      SupplierInvoice,
+      SupplierInvoiceLine,
     ]),
   ],
   providers: [ProcurementService],

@@ -27,11 +27,33 @@ import {
   type RequestForQuoteStatus,
 } from './entities/request-for-quote.entity';
 import {
+  GoodsReceipt,
+  GoodsReceiptLine,
+  type GoodsReceiptStatus,
+} from './entities/goods-receipt.entity';
+import {
+  SupplierInvoice,
+  SupplierInvoiceLine,
+  type SupplierInvoiceStatus,
+} from './entities/supplier-invoice.entity';
+import {
   assertPurchaseRequisitionTransition,
   canPurchaseRequisitionTransition,
 } from './state-machines/purchase-requisition.fsm';
 import { canPurchaseOrderTransition } from './state-machines/purchase-order.fsm';
 import { canRequestForQuoteTransition } from './state-machines/request-for-quote.fsm';
+import {
+  canGoodsReceiptTransition,
+} from './state-machines/goods-receipt.fsm';
+import {
+  canSupplierInvoiceTransition,
+} from './state-machines/supplier-invoice.fsm';
+import {
+  runThreeWayMatch,
+  type PoLineSnapshot,
+  type GrLineSnapshot,
+  type SiLineSnapshot,
+} from './three-way-match';
 import {
   CreatePurchaseRequisitionDto,
   CreatePurchaseOrderDto,
@@ -44,6 +66,12 @@ import {
   RecordSupplierQuoteDto,
   AwardRfqDto,
   ConvertRfqToPoDto,
+  CreateGoodsReceiptDto,
+  InspectGoodsReceiptDto,
+  CreateSupplierInvoiceDto,
+  RunMatchDto,
+  ApproveSupplierInvoiceDto,
+  DisputeSupplierInvoiceDto,
 } from './procurement.dto';
 
 /**
@@ -101,6 +129,14 @@ export class ProcurementService {
     private readonly rfqLineRepo: Repository<RequestForQuoteLine>,
     @InjectRepository(RequestForQuoteQuote)
     private readonly rfqQuoteRepo: Repository<RequestForQuoteQuote>,
+    @InjectRepository(GoodsReceipt)
+    private readonly grRepo: Repository<GoodsReceipt>,
+    @InjectRepository(GoodsReceiptLine)
+    private readonly grLineRepo: Repository<GoodsReceiptLine>,
+    @InjectRepository(SupplierInvoice)
+    private readonly siRepo: Repository<SupplierInvoice>,
+    @InjectRepository(SupplierInvoiceLine)
+    private readonly siLineRepo: Repository<SupplierInvoiceLine>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -718,6 +754,432 @@ export class ProcurementService {
     const year = new Date().getFullYear();
     const count = await this.rfqRepo.count({ where: { tenantId } });
     return `RFQ-${year}-${String(count + 1).padStart(5, '0')}`;
+  }
+
+  // ─── GoodsReceipt (S14.1) ─────────────────────────────────────
+
+  async createGoodsReceipt(
+    tenantId: string,
+    dto: CreateGoodsReceiptDto,
+  ): Promise<GoodsReceipt> {
+    // Verify the PO exists and belongs to tenant.
+    const po = await this.poRepo.findOne({
+      where: { id: dto.poId, tenantId },
+    });
+    if (!po) {
+      throw new NotFoundException(`Purchase order ${dto.poId} not found`);
+    }
+    if (po.status === 'cancelled' || po.status === 'closed') {
+      throw new BadRequestException(
+        `Cannot receive against PO in status ${po.status}`,
+      );
+    }
+    const grNumber = await this.nextGrNumber(tenantId);
+    return this.dataSource.transaction(async (manager) => {
+      const gr = manager.create(GoodsReceipt, {
+        tenantId,
+        grNumber,
+        poId: dto.poId,
+        supplierId: dto.supplierId,
+        warehouseId: dto.warehouseId,
+        receiptDate: new Date(dto.receiptDate),
+        receivedBy: dto.receivedBy,
+        carrierTrackingNumber: dto.carrierTrackingNumber ?? null,
+        supplierDdtNumber: dto.supplierDdtNumber ?? null,
+        supplierDdtDate: dto.supplierDdtDate
+          ? new Date(dto.supplierDdtDate)
+          : null,
+        status: 'draft' as GoodsReceiptStatus,
+        notes: dto.notes ?? null,
+        confirmedAt: null,
+        inspectedAt: null,
+      });
+      const saved = await manager.save(gr);
+      const lineEntities = dto.lines.map((l) =>
+        manager.create(GoodsReceiptLine, {
+          tenantId,
+          goodsReceiptId: saved.id,
+          poLineId: l.poLineId,
+          productId: l.productId,
+          receivedQuantity: l.receivedQuantity,
+          // On creation, default accepted = received (full accept). Inspection
+          // may later split into accepted/rejected via inspectGoodsReceipt().
+          acceptedQuantity: l.acceptedQuantity ?? l.receivedQuantity,
+          rejectedQuantity: l.rejectedQuantity ?? '0',
+          rejectReason: l.rejectReason ?? null,
+          lotId: l.lotId ?? null,
+          serialIds: l.serialIds ?? [],
+          inspectionId: null,
+          warehouseLocation: l.warehouseLocation ?? null,
+        }),
+      );
+      await manager.save(lineEntities);
+      saved.lines = lineEntities;
+      this.logger.log({
+        event: 'procurement.gr_created',
+        tenantId,
+        goodsReceiptId: saved.id,
+        poId: dto.poId,
+        lineCount: lineEntities.length,
+      });
+      return saved;
+    });
+  }
+
+  async getGoodsReceipt(tenantId: string, id: string): Promise<GoodsReceipt> {
+    const gr = await this.grRepo.findOne({
+      where: { id, tenantId },
+      relations: ['lines'],
+    });
+    if (!gr) throw new NotFoundException(`Goods receipt ${id} not found`);
+    return gr;
+  }
+
+  async confirmGoodsReceipt(
+    tenantId: string,
+    id: string,
+  ): Promise<GoodsReceipt> {
+    return this.transitionGoodsReceipt(tenantId, id, 'confirmed', (gr) => {
+      gr.confirmedAt = new Date();
+    });
+  }
+
+  async inspectGoodsReceipt(
+    tenantId: string,
+    id: string,
+    dto: InspectGoodsReceiptDto,
+  ): Promise<GoodsReceipt> {
+    const gr = await this.getGoodsReceipt(tenantId, id);
+    if (gr.status !== 'confirmed' && gr.status !== 'partially_inspected') {
+      throw new BadRequestException(
+        `Cannot inspect a GR in status ${gr.status}; must be confirmed or partially_inspected`,
+      );
+    }
+    return this.dataSource.transaction(async (manager) => {
+      for (const li of dto.lines) {
+        const grl = gr.lines.find((g) => g.id === li.goodsReceiptLineId);
+        if (!grl) {
+          throw new NotFoundException(
+            `GR line ${li.goodsReceiptLineId} not found on GR ${id}`,
+          );
+        }
+        const acc = Number(li.acceptedQuantity);
+        const rej = Number(li.rejectedQuantity);
+        const recv = Number(grl.receivedQuantity);
+        if (acc + rej > recv + 0.0001) {
+          throw new BadRequestException(
+            `Line ${grl.id}: accepted+rejected (${acc + rej}) > received (${recv})`,
+          );
+        }
+        grl.acceptedQuantity = li.acceptedQuantity;
+        grl.rejectedQuantity = li.rejectedQuantity;
+        grl.rejectReason = li.rejectReason ?? grl.rejectReason;
+        grl.inspectionId = li.inspectionId ?? grl.inspectionId;
+        await manager.save(grl);
+      }
+      // Decide GR-level transition: fully inspected if every line settled.
+      const allSettled = gr.lines.every((g) => {
+        const a = Number(g.acceptedQuantity);
+        const r = Number(g.rejectedQuantity);
+        const v = Number(g.receivedQuantity);
+        return Math.abs(a + r - v) < 0.0001;
+      });
+      const next: GoodsReceiptStatus = allSettled
+        ? 'inspected'
+        : 'partially_inspected';
+      gr.status = next;
+      if (next === 'inspected') gr.inspectedAt = new Date();
+      const saved = await manager.save(gr);
+      this.logger.log({
+        event: 'procurement.gr_inspected',
+        tenantId,
+        goodsReceiptId: id,
+        next,
+      });
+      return saved;
+    });
+  }
+
+  async rejectGoodsReceipt(
+    tenantId: string,
+    id: string,
+  ): Promise<GoodsReceipt> {
+    return this.transitionGoodsReceipt(tenantId, id, 'rejected');
+  }
+
+  // ─── SupplierInvoice (S14.2) ──────────────────────────────────
+
+  async createSupplierInvoice(
+    tenantId: string,
+    dto: CreateSupplierInvoiceDto,
+  ): Promise<SupplierInvoice> {
+    // Header-level integrity: subtotal + tax = total (exact integer arithmetic).
+    if (dto.subtotalCents + dto.taxCents !== dto.totalCents) {
+      throw new BadRequestException(
+        `subtotal+tax (${dto.subtotalCents + dto.taxCents}) != total (${dto.totalCents})`,
+      );
+    }
+    // Reject duplicates explicitly (the unique index also guards in DB).
+    const dup = await this.siRepo.findOne({
+      where: {
+        tenantId,
+        supplierId: dto.supplierId,
+        supplierInvoiceNumber: dto.supplierInvoiceNumber,
+      },
+    });
+    if (dup) {
+      throw new ConflictException(
+        `Supplier invoice ${dto.supplierInvoiceNumber} from supplier ${dto.supplierId} already exists`,
+      );
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const si = manager.create(SupplierInvoice, {
+        tenantId,
+        supplierId: dto.supplierId,
+        supplierInvoiceNumber: dto.supplierInvoiceNumber,
+        supplierInvoiceDate: new Date(dto.supplierInvoiceDate),
+        receivedDate: dto.receivedDate ? new Date(dto.receivedDate) : new Date(),
+        receivedVia: dto.receivedVia ?? 'manual',
+        externalMessageId: dto.externalMessageId ?? null,
+        fatturaPaXmlPath: dto.fatturaPaXmlPath ?? null,
+        subtotalCents: dto.subtotalCents,
+        taxCents: dto.taxCents,
+        totalCents: dto.totalCents,
+        ivaBreakdown: dto.ivaBreakdown ?? [],
+        paymentDueDate: new Date(dto.paymentDueDate),
+        paymentTermsDays: dto.paymentTermsDays ?? 30,
+        status: 'received' as SupplierInvoiceStatus,
+        poIds: dto.poIds ?? [],
+        discrepancies: null,
+        matchedAt: null,
+        matchedBy: null,
+        approvedAt: null,
+        approvedBy: null,
+        paidAt: null,
+        paymentBatchId: null,
+        notes: dto.notes ?? null,
+      });
+      const saved = await manager.save(si);
+      const lineEntities = dto.lines.map((l) =>
+        manager.create(SupplierInvoiceLine, {
+          tenantId,
+          supplierInvoiceId: saved.id,
+          description: l.description,
+          quantity: l.quantity,
+          unitOfMeasure: l.unitOfMeasure ?? 'pz',
+          unitCostCents: l.unitCostCents,
+          lineTotalCents: l.lineTotalCents,
+          taxRate: l.taxRate ?? 22,
+          taxAmountCents:
+            l.taxAmountCents ??
+            Math.round((l.lineTotalCents * (l.taxRate ?? 22)) / 100),
+          naturaCode: l.naturaCode ?? null,
+          poLineId: l.poLineId ?? null,
+          notes: l.notes ?? null,
+        }),
+      );
+      await manager.save(lineEntities);
+      saved.lines = lineEntities;
+      this.logger.log({
+        event: 'procurement.si_created',
+        tenantId,
+        supplierInvoiceId: saved.id,
+        supplierId: dto.supplierId,
+        totalCents: dto.totalCents,
+        receivedVia: saved.receivedVia,
+      });
+      return saved;
+    });
+  }
+
+  async getSupplierInvoice(
+    tenantId: string,
+    id: string,
+  ): Promise<SupplierInvoice> {
+    const si = await this.siRepo.findOne({
+      where: { id, tenantId },
+      relations: ['lines'],
+    });
+    if (!si) throw new NotFoundException(`Supplier invoice ${id} not found`);
+    return si;
+  }
+
+  /**
+   * Run the 3-way match (PO ↔ GR ↔ SI). Loads all PO lines + accepted GR
+   * lines for every PO referenced by the SI lines, evaluates per
+   * `runThreeWayMatch`, persists discrepancies, and transitions the SI to
+   * `matched` (clean) or `disputed` (any discrepancy).
+   */
+  async runMatch(
+    tenantId: string,
+    siId: string,
+    dto: RunMatchDto = {},
+  ): Promise<SupplierInvoice> {
+    const si = await this.getSupplierInvoice(tenantId, siId);
+    if (si.status !== 'received') {
+      throw new BadRequestException(
+        `Cannot run match on SI in status ${si.status}; must be 'received'`,
+      );
+    }
+    // Collect distinct PO line ids referenced by the SI.
+    const poLineIds = Array.from(
+      new Set(si.lines.map((l) => l.poLineId).filter((x): x is string => !!x)),
+    );
+    const poLines = poLineIds.length
+      ? await this.poLineRepo
+          .createQueryBuilder('pol')
+          .where('pol.tenantId = :tenantId', { tenantId })
+          .andWhere('pol.id IN (:...ids)', { ids: poLineIds })
+          .getMany()
+      : [];
+    const poLineSnaps: PoLineSnapshot[] = poLines.map((pol) => ({
+      poLineId: pol.id,
+      productId: pol.productId,
+      quantity: pol.quantity,
+      unitCostCents: pol.unitCostCents,
+      taxRate: pol.taxRate,
+    }));
+    // Load all GR lines for the same PO line ids.
+    const grLines = poLineIds.length
+      ? await this.grLineRepo
+          .createQueryBuilder('grl')
+          .where('grl.tenantId = :tenantId', { tenantId })
+          .andWhere('grl.poLineId IN (:...ids)', { ids: poLineIds })
+          .getMany()
+      : [];
+    const grLineSnaps: GrLineSnapshot[] = grLines.map((g) => ({
+      poLineId: g.poLineId,
+      acceptedQuantity: g.acceptedQuantity,
+    }));
+    const siLineSnaps: SiLineSnapshot[] = si.lines.map((l) => ({
+      invoiceLineId: l.id,
+      poLineId: l.poLineId,
+      quantity: l.quantity,
+      unitCostCents: l.unitCostCents,
+      taxRate: l.taxRate,
+      lineTotalCents: l.lineTotalCents,
+    }));
+    const result = runThreeWayMatch({
+      poLines: poLineSnaps,
+      grLines: grLineSnaps,
+      siLines: siLineSnaps,
+      siTotalCents: si.totalCents,
+      tolerances: {
+        quantityPct: dto.quantityPct,
+        pricePct: dto.pricePct,
+        totalPct: dto.totalPct,
+      },
+    });
+    const next: SupplierInvoiceStatus = result.matched ? 'matched' : 'disputed';
+    si.discrepancies = result.discrepancies.length ? result.discrepancies : null;
+    si.status = next;
+    if (next === 'matched') {
+      si.matchedAt = new Date();
+    }
+    // Refresh poIds: the set of PO ids the SI now touches (derived from PO lines).
+    if (poLines.length) {
+      const poIds = Array.from(new Set(poLines.map((p) => p.purchaseOrderId)));
+      si.poIds = poIds;
+    }
+    const saved = await this.siRepo.save(si);
+    this.logger.log({
+      event: 'procurement.si_matched',
+      tenantId,
+      supplierInvoiceId: siId,
+      matched: result.matched,
+      discrepancyCount: result.discrepancies.length,
+      next,
+    });
+    return saved;
+  }
+
+  async approveSupplierInvoice(
+    tenantId: string,
+    id: string,
+    dto: ApproveSupplierInvoiceDto,
+  ): Promise<SupplierInvoice> {
+    return this.transitionSupplierInvoice(tenantId, id, 'approved', (si) => {
+      si.approvedAt = new Date();
+      si.approvedBy = dto.approverUserId;
+    });
+  }
+
+  async disputeSupplierInvoice(
+    tenantId: string,
+    id: string,
+    dto: DisputeSupplierInvoiceDto,
+  ): Promise<SupplierInvoice> {
+    return this.transitionSupplierInvoice(tenantId, id, 'disputed', (si) => {
+      si.notes = si.notes ? `${si.notes}\n[DISPUTE] ${dto.reason}` : `[DISPUTE] ${dto.reason}`;
+    });
+  }
+
+  async rejectSupplierInvoice(
+    tenantId: string,
+    id: string,
+  ): Promise<SupplierInvoice> {
+    return this.transitionSupplierInvoice(tenantId, id, 'rejected');
+  }
+
+  async cancelSupplierInvoice(
+    tenantId: string,
+    id: string,
+  ): Promise<SupplierInvoice> {
+    return this.transitionSupplierInvoice(tenantId, id, 'cancelled');
+  }
+
+  private async nextGrNumber(tenantId: string): Promise<string> {
+    const year = new Date().getFullYear();
+    const count = await this.grRepo.count({ where: { tenantId } });
+    return `GR-${year}-${String(count + 1).padStart(5, '0')}`;
+  }
+
+  private async transitionGoodsReceipt(
+    tenantId: string,
+    id: string,
+    next: GoodsReceiptStatus,
+    mutator?: (gr: GoodsReceipt) => void,
+  ): Promise<GoodsReceipt> {
+    const gr = await this.getGoodsReceipt(tenantId, id);
+    if (!canGoodsReceiptTransition(gr.status, next)) {
+      throw new BadRequestException(
+        `Invalid transition: ${gr.status} → ${next}`,
+      );
+    }
+    gr.status = next;
+    if (mutator) mutator(gr);
+    const saved = await this.grRepo.save(gr);
+    this.logger.log({
+      event: 'procurement.gr_transitioned',
+      tenantId,
+      goodsReceiptId: id,
+      to: next,
+    });
+    return saved;
+  }
+
+  private async transitionSupplierInvoice(
+    tenantId: string,
+    id: string,
+    next: SupplierInvoiceStatus,
+    mutator?: (si: SupplierInvoice) => void,
+  ): Promise<SupplierInvoice> {
+    const si = await this.getSupplierInvoice(tenantId, id);
+    if (!canSupplierInvoiceTransition(si.status, next)) {
+      throw new BadRequestException(
+        `Invalid transition: ${si.status} → ${next}`,
+      );
+    }
+    si.status = next;
+    if (mutator) mutator(si);
+    const saved = await this.siRepo.save(si);
+    this.logger.log({
+      event: 'procurement.si_transitioned',
+      tenantId,
+      supplierInvoiceId: id,
+      to: next,
+    });
+    return saved;
   }
 
   // ─── private helpers ──────────────────────────────────────────

@@ -100,7 +100,49 @@ Verified
 
 - Full backend suite: 9 of 10 suites pass; 125 of 126 tests pass.
 
+## Sprint 3 (= plan §31.1 Sprint 14 — Procurement Phase B)
+
+- **Sprint number**: 3 (autonomous-loop) / 14 (plan §31.1)
+- **Sprint window**: 2026-W22 to 2026-W23
+- **Status**: in_progress (S14.1 + S14.2 + S14.3 landed this iteration; S14.4 + S14.5 + S14.6 next)
+- **Sprint demo subject**: PR → PO → GR (confirm + inspect) → SI (3-way match → matched | disputed) — full procure-to-pay loop.
+
+| ID | Subject | Status | Owner | PR |
+|---|---|---|---|---|
+| S14.1 | `GoodsReceipt` entity + state machine + service + REST | completed — entities at `src/procurement/entities/goods-receipt.entity.ts` (GoodsReceipt + GoodsReceiptLine; 5-state enum draft/confirmed/partially_inspected/inspected/rejected; tenantId-first composite indexes per R-D01; @DataClassification on supplier-DDT, GR number, notes); FSM at `state-machines/goods-receipt.fsm.ts`; service methods createGoodsReceipt / getGoodsReceipt / confirmGoodsReceipt / inspectGoodsReceipt / rejectGoodsReceipt + per-line accept/reject quantity guards; REST endpoints under `/api/procurement/goods-receipts/*`. | autonomous-agent | (this iteration) |
+| S14.2 | `SupplierInvoice` entity + state machine + service + REST | completed — entities at `src/procurement/entities/supplier-invoice.entity.ts` (SupplierInvoice header + SupplierInvoiceLine + SupplierInvoiceDiscrepancy interface; 7-state enum received/matched/approved/disputed/rejected/paid/cancelled; receivedVia enum pec/manual/ocr/sdi; ivaBreakdown + discrepancies JSONB; UNIQUE (tenantId, supplierId, supplierInvoiceNumber); @DataClassification on supplier-invoice number, externalMessageId, fatturaPaXmlPath, notes, line description/notes); FSM at `state-machines/supplier-invoice.fsm.ts` (RECEIVED → MATCHED/DISPUTED/REJECTED/CANCELLED → APPROVED → PAID terminal graph); service methods createSupplierInvoice (header subtotal+tax=total integrity check + duplicate guard) / getSupplierInvoice / approveSupplierInvoice / disputeSupplierInvoice / rejectSupplierInvoice / cancelSupplierInvoice; REST endpoints under `/api/procurement/supplier-invoices/*`. | autonomous-agent | (this iteration) |
+| S14.3 | 3-way match (PO ↔ GR ↔ SI) | completed — pure-logic at `src/procurement/three-way-match.ts` (`runThreeWayMatch(input)`; per-supplier-configurable tolerances ±2% qty, ±0.5% price, ±1% total; per-SI-line checks aggregate accepted GR qty; `unmatched_line` / `missing_po` / `quantity` / `price` / `total` discrepancy types). 12-test spec green. Service-side integration: `runMatch(tenantId, siId, dto?)` loads PO lines + accepted GR lines for every PO line referenced by the SI, evaluates `runThreeWayMatch`, persists discrepancies as JSONB, transitions SI to `matched` (clean) or `disputed` (any discrepancy), refreshes `poIds` from the actual PO-line traversal. REST endpoint `POST /api/procurement/supplier-invoices/:id/match`. | autonomous-agent | (this iteration) |
+| S14.4 | PEC ingester worker skeleton | pending | autonomous-agent | — |
+| S14.5 | ADR-016 + InfoCert Conservazione skeleton | pending | autonomous-agent | — |
+| S14.6 | ADR-037 webhooks + Outbox dispatcher | pending | autonomous-agent | — |
+
+### Sprint 3 deliverables this iteration (S14.1, S14.2, S14.3)
+
+New files
+- `backend/src/procurement/entities/goods-receipt.entity.ts`.
+- `backend/src/procurement/entities/supplier-invoice.entity.ts` (+ `SupplierInvoiceDiscrepancy` interface exported alongside).
+- `backend/src/procurement/state-machines/goods-receipt.fsm.ts`.
+- `backend/src/procurement/state-machines/supplier-invoice.fsm.ts`.
+- `backend/src/procurement/state-machines/gr-si.fsm.spec.ts` (39 tests).
+- `backend/src/procurement/three-way-match.ts` + `three-way-match.spec.ts` (12 tests).
+- `backend/src/migrations/1714200000000-GoodsReceiptSupplierInvoiceSchema.ts` (M-015) — 4 tables + 3 enums; tenantId-first composite indexes per R-D01.
+
+Modified
+- `backend/src/procurement/procurement.module.ts` — wires GoodsReceipt + GoodsReceiptLine + SupplierInvoice + SupplierInvoiceLine.
+- `backend/src/procurement/procurement.service.ts` — adds GR + SI repos, GR + SI methods, `runMatch` 3-way driver, `transitionGoodsReceipt` + `transitionSupplierInvoice` private helpers, `nextGrNumber` helper.
+- `backend/src/procurement/procurement.controller.ts` — adds 11 endpoints under `/api/procurement/goods-receipts/*` and `/api/procurement/supplier-invoices/*`.
+- `backend/src/procurement/procurement.dto.ts` — adds `CreateGoodsReceiptDto`, `InspectGoodsReceiptDto`, `CreateSupplierInvoiceDto`, `RunMatchDto`, `ApproveSupplierInvoiceDto`, `DisputeSupplierInvoiceDto`.
+
+Verified
+- Procurement-only ESLint with `no-untenanted-query` rule: 0 violations (R-D02 clean).
+- Procurement test suites 4/4 pass — 122 tests total (state-machines 48 + gr-si.fsm 39 + request-for-quote.fsm 23 + three-way-match 12).
+- Pre-existing TS errors in `app.module.ts`, `audit/audit.interceptor.ts`, `inventory/inventory.service.ts`, `sales/sales.service.ts` remain (documented Sprint 1; out of scope this iteration). Procurement module clean of new TS errors.
+
 ## Loop budget + halt awareness
 
 - Halt on: user prompt; sprint completion; hard error (CI broken >2 iterations); per-day cost cap.
 - Per-iteration logging: appended to this file's `Loop log` section.
+
+## Loop log (Sprint 3)
+
+- 2026-04-28 i12: Sprint 3 opens — Procurement Phase B. S14.1 + S14.2 + S14.3 landed in one logical change set (tightly coupled: SI's 3-way match consumes GR's accepted quantities). 11 new REST routes; 4 new repos injected. Procurement specs 122/122 green. Procurement lint clean.

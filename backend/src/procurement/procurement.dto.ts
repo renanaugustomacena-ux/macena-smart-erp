@@ -197,3 +197,114 @@ export class ConvertRfqToPoDto {
   @IsInt() @Min(0) @IsOptional() paymentTermsDays?: number;
 }
 
+// --- GoodsReceipt DTOs (S14.1) --------------------------------------------
+
+export class GoodsReceiptLineInputDto {
+  @IsUUID() poLineId: string;
+  @IsUUID() productId: string;
+  @IsNumberString() receivedQuantity: string;
+  @IsNumberString() @IsOptional() acceptedQuantity?: string;
+  @IsNumberString() @IsOptional() rejectedQuantity?: string;
+  @IsString() @IsOptional() rejectReason?: string;
+  @IsUUID() @IsOptional() lotId?: string;
+  @IsArray() @IsOptional() serialIds?: string[];
+  @IsString() @Length(1, 50) @IsOptional() warehouseLocation?: string;
+}
+
+export class CreateGoodsReceiptDto {
+  @IsUUID() poId: string;
+  @IsUUID() supplierId: string;
+  @IsUUID() warehouseId: string;
+  @IsDateString() receiptDate: string;
+  @IsUUID() receivedBy: string;
+  @IsString() @Length(1, 100) @IsOptional() carrierTrackingNumber?: string;
+  @IsString() @Length(1, 100) @IsOptional() supplierDdtNumber?: string;
+  @IsDateString() @IsOptional() supplierDdtDate?: string;
+  @IsString() @IsOptional() notes?: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => GoodsReceiptLineInputDto)
+  lines: GoodsReceiptLineInputDto[];
+}
+
+export class InspectGoodsReceiptLineDto {
+  @IsUUID() goodsReceiptLineId: string;
+  @IsNumberString() acceptedQuantity: string;
+  @IsNumberString() rejectedQuantity: string;
+  @IsString() @IsOptional() rejectReason?: string;
+  @IsUUID() @IsOptional() inspectionId?: string;
+}
+
+export class InspectGoodsReceiptDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => InspectGoodsReceiptLineDto)
+  lines: InspectGoodsReceiptLineDto[];
+}
+
+// --- SupplierInvoice DTOs (S14.2) -----------------------------------------
+
+export class SupplierInvoiceLineInputDto {
+  @IsString() @Length(1, 500) description: string;
+  @IsNumberString() quantity: string;
+  @IsString() @Length(1, 20) @IsOptional() unitOfMeasure?: string;
+  @IsInt() @Min(0) unitCostCents: number;
+  @IsInt() @Min(0) lineTotalCents: number;
+  @IsInt() @Min(0) @Max(99) @IsOptional() taxRate?: number;
+  @IsInt() @Min(0) @IsOptional() taxAmountCents?: number;
+  @IsString() @Length(1, 10) @IsOptional() naturaCode?: string;
+  @IsUUID() @IsOptional() poLineId?: string;
+  @IsString() @IsOptional() notes?: string;
+}
+
+export class IvaBreakdownItemDto {
+  @IsInt() @Min(0) @Max(99) rate: number;
+  @IsInt() @Min(0) taxableCents: number;
+  @IsInt() @Min(0) taxCents: number;
+  @IsString() @Length(1, 10) @IsOptional() naturaCode?: string;
+}
+
+export class CreateSupplierInvoiceDto {
+  @IsUUID() supplierId: string;
+  @IsString() @Length(1, 50) supplierInvoiceNumber: string;
+  @IsDateString() supplierInvoiceDate: string;
+  @IsDateString() @IsOptional() receivedDate?: string;
+  @IsString() @IsIn(['pec', 'manual', 'ocr', 'sdi']) @IsOptional()
+  receivedVia?: 'pec' | 'manual' | 'ocr' | 'sdi';
+  @IsString() @Length(1, 255) @IsOptional() externalMessageId?: string;
+  @IsString() @Length(1, 500) @IsOptional() fatturaPaXmlPath?: string;
+  @IsInt() @Min(0) subtotalCents: number;
+  @IsInt() @Min(0) taxCents: number;
+  @IsInt() @Min(0) totalCents: number;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => IvaBreakdownItemDto)
+  @IsOptional()
+  ivaBreakdown?: IvaBreakdownItemDto[];
+  @IsDateString() paymentDueDate: string;
+  @IsInt() @Min(0) @IsOptional() paymentTermsDays?: number;
+  @IsArray() @IsUUID('all', { each: true }) @IsOptional() poIds?: string[];
+  @IsString() @IsOptional() notes?: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => SupplierInvoiceLineInputDto)
+  lines: SupplierInvoiceLineInputDto[];
+}
+
+export class RunMatchDto {
+  @IsInt() @Min(0) @Max(100) @IsOptional() quantityPct?: number;
+  @IsInt() @Min(0) @Max(100) @IsOptional() pricePct?: number;
+  @IsInt() @Min(0) @Max(100) @IsOptional() totalPct?: number;
+}
+
+export class ApproveSupplierInvoiceDto {
+  @IsUUID() approverUserId: string;
+}
+
+export class DisputeSupplierInvoiceDto {
+  @IsString() reason: string;
+}
+
