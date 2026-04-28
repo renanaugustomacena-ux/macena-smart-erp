@@ -34,6 +34,7 @@ import { SsoModule } from './sso/sso.module';
 import { TreasuryModule } from './treasury/treasury.module';
 import { AiCopilotModule } from './ai-copilot/ai-copilot.module';
 import { ForecastingModule } from './forecasting/forecasting.module';
+import { SchedulingModule } from './scheduling/scheduling.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -127,6 +128,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     TreasuryModule,
     AiCopilotModule,
     ForecastingModule,
+    SchedulingModule,
   ],
   providers: [
     {
