@@ -75,7 +75,7 @@ Sprint 22 (per plan §31.2) wires the live Aruba implementation. Sprint 23 wires
 ## Alternatives considered
 
 - **Single-vendor (Aruba only)**: rejected — fails the legal "no single point of failure" intent for a 10-year obligation; plus a price-leverage problem at renewal.
-- **Build conservazione in-house**: rejected — the platform would have to enrol with AgID as Conservatore Accreditato itself (multi-year process; ISO 14721 OAIS conformance audit; €100k+ annual maintenance). Not viable until €10M ARR.
+- **Build conservazione in-house**: rejected — the platform would have to enrol with AgID as Conservatore Accreditato itself (multi-year process; ISO 14721 OAIS conformance audit; €100k+ annual maintenance). Not viable until €10M annual revenue.
 - **Aggregator (e.g., Trust Provider front-end)**: rejected — extra cost layer; weaker direct-issue resolution; the two largest Italian Conservatori are already first-class via direct integration.
 
 ## References

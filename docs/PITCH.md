@@ -14,7 +14,7 @@ Per un proprietario di una fonderia a Mozzecane che deve servire ordini, gestire
 
 ## 2. La Soluzione SmartERP
 
-**Cloud-native, API-first, tenant isolato.** Un unico abbonamento per azienda. Sei moduli:
+**Cloud-native, API-first, tenant isolato.** Una licenza per azienda + contratto annuale di manutenzione. Sei moduli:
 1. **Magazzino**: prodotti, depositi, movimenti, riservazioni, valorizzazione LIFO/FIFO/media ponderata.
 2. **Produzione**: ordini di produzione, bill of materials, avanzamento work-order, efficienza per centro di lavoro.
 3. **Vendite**: anagrafica clienti, ordini, DDT, integrazione diretta con magazzino e contabilità.
@@ -29,7 +29,7 @@ Accesso browser + mobile. **Nessun server da mantenere.** Aggiornamenti continui
 ## 3. Il Differenziatore
 
 - **Italian-first**: tutte le features regolamentari italiane **out of the box** — FatturaPA, split payment, reverse charge, IVA multi-aliquota, Piano dei Conti CEE, LIPE, conservazione a norma.
-- **SME-pricing**: €99/utente/mese per il piano Base; €199 per Professionale; Enterprise custom. Setup in < 7 giorni.
+- **SME-pricing**: licenza perpetua per postazione (Base €1.990, Professionale €3.990, Enterprise custom) + contratto di manutenzione annuale (15% del valore licenza). Setup in < 7 giorni.
 - **Cloud-native con tenant isolation garantito**: ogni query è tenant-scoped; security audit-able.
 - **API-first**: integra con e-commerce (Shopify, WooCommerce), MES industriali (OPC UA / MQTT), banche (CBI).
 - **SLA 99.9%**: contrattuale per Professionale e Enterprise.

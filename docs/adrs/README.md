@@ -9,7 +9,7 @@ Each ADR is immutable once accepted; supersession explicit (the new ADR referenc
 | ID | Title | Status | Sprint |
 |---|---|---|---|
 | ADR-001 | Multi-tenant cloud as the deployment posture | Accepted 2026-04-28 | n/a |
-| ADR-002 | Modular monolith first; microservices past €10M ARR / 30 engineers | Accepted 2026-04-28 | n/a |
+| ADR-002 | Modular monolith first; microservices past €10M annual revenue / 30 engineers | Accepted 2026-04-28 | n/a |
 | ADR-003 | NestJS 10 + TypeScript 5 + Node 20 backend | Accepted 2026-04-28 | n/a |
 | ADR-004 | PostgreSQL 16 (Aurora in prod) as the system of record | Accepted 2026-04-28 | n/a |
 | ADR-005 | Next.js 14 App Router + React 18 + Tailwind for the frontend | Accepted 2026-04-28 | n/a |

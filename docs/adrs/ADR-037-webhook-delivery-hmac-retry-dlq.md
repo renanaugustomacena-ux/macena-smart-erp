@@ -154,7 +154,7 @@ The worker, REST API, and BullMQ wiring land in plan §31.2 Sprint 24. The ADR p
 
 - **Direct HTTP push without outbox**: rejected — loses durability; an outage between event-emit and HTTP send drops the event.
 - **At-most-once delivery**: rejected — consumers explicitly want at-least-once. De-duplication via `X-SmartERP-Event-Id` is documented.
-- **Vendor-provided webhook gateway (Hookdeck, Convoy, etc.)**: deferred. Pros: less infrastructure to run. Cons: extra cost layer; data-residency concerns for IT-tenant payloads. Reconsider at €5M ARR if maintenance burden exceeds the gateway margin.
+- **Vendor-provided webhook gateway (Hookdeck, Convoy, etc.)**: deferred. Pros: less infrastructure to run. Cons: extra cost layer; data-residency concerns for IT-tenant payloads. Reconsider at €5M annual revenue if maintenance burden exceeds the gateway margin.
 - **GraphQL Subscriptions / WebSockets**: deferred. The first ten target tenants asked for HTTP webhooks first; GraphQL Subscriptions land alongside the v3 public API.
 
 ## References

@@ -66,7 +66,7 @@ Sprint 19 (per plan §31.1) adds the live Bartolini integration plus GLS. Sprint
 
 ## Alternatives considered
 
-- **Aggregator (Shippo, EasyPost, Sendcloud)**: rejected for v2-v3. Pros: one API, less per-vendor maintenance. Cons: extra cost layer; weaker direct-issue resolution; some Italian carriers (Bartolini specifically) are second-class on these aggregators. Reconsider at €3M ARR if direct maintenance burden exceeds the aggregator margin.
+- **Aggregator (Shippo, EasyPost, Sendcloud)**: rejected for v2-v3. Pros: one API, less per-vendor maintenance. Cons: extra cost layer; weaker direct-issue resolution; some Italian carriers (Bartolini specifically) are second-class on these aggregators. Reconsider at €3M annual revenue if direct maintenance burden exceeds the aggregator margin.
 - **Per-tenant custom carrier code**: rejected — would not scale across a tenant base.
 
 ## References

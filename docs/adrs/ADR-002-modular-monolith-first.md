@@ -1,4 +1,4 @@
-# ADR-002 — Modular monolith first; microservices only past €10M ARR or 30 engineers
+# ADR-002 — Modular monolith first; microservices only past €10M annual revenue or 30 engineers
 
 - **Status**: Accepted 2026-04-28
 - **Date**: 2026-04-28
@@ -23,7 +23,7 @@ SmartERP is a NestJS modular monolith with strict bounded-context isolation:
 - Worker pool deployed as a separate replica of the same container image (different entrypoint).
 
 Microservices reconsidered only when one or more of:
-- Total ARR exceeds €10M, OR
+- Total annual revenue exceeds €10M, OR
 - Engineering team exceeds 30 engineers, OR
 - A specific bounded context has measurable scale needs that the monolith cannot serve (e.g., AI-copilot inference requires a separate worker fleet at >100 concurrent sessions).
 
@@ -45,7 +45,7 @@ When any trigger fires, the *first* extraction is per-context, ADR-driven, with 
 
 ## Alternatives considered
 
-- **Microservices from day 1**: rejected — operational tax kills startup velocity. The 2026 industry consensus (per Kamil Grzybek, per LIB-12:02_Architecture_Design) is that microservices are the wrong default for sub-€10M-ARR product startups.
+- **Microservices from day 1**: rejected — operational tax kills startup velocity. The 2026 industry consensus (per Kamil Grzybek, per LIB-12:02_Architecture_Design) is that microservices are the wrong default for sub-€10M-revenue product startups.
 - **Monolith without bounded contexts**: rejected — leads to a tangled god-object in 18 months; future-extraction becomes impossible without a rewrite.
 - **Mini-services from day 1 (a handful, e.g., backend + worker + scheduler)**: partially adopted — the worker pool is a separate deployment of the same image with a different entrypoint, and the OTel collector + the observability stack are separate deployments by necessity.
 

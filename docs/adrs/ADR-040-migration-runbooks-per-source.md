@@ -25,7 +25,7 @@ The Italian SME long tail of source systems is non-trivial:
 
 A single, generic "data import API" cannot serve all of these. Source-side export formats vary (CSV, XML, FatturaPA bundle, native database, screenshot transcription). Source-side data quirks vary (date ambiguity, free-text customer names, partial-tenancy mappings, missing CCNL coding). The risk of an under-specified migration is a customer that signs but never goes live, or a customer that goes live with broken data and churns within 90 days.
 
-The **cost of not owning this** has been measured in the persona research: one customer who churned after 60 days because the migration team declared "your data is wrong" and walked away costs ~€15k in lost ARR + the negative reputation amplifier among Verona commercialisti (Andrea network).
+The **cost of not owning this** has been measured in the persona research: one customer who churned after 60 days because the migration team declared "your data is wrong" and walked away costs ~€15k in lost annual revenue (licence + maintenance) + the negative reputation amplifier among Verona commercialisti (Andrea network).
 
 ## Decision
 

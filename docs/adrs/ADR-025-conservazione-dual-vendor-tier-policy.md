@@ -11,7 +11,7 @@ ADR-016 established the `ConservazioneAdapter` port and shipped two skeleton imp
 
 Operating cost makes that decision non-trivial:
 
-- Aruba PEC Conservazione lists ~€0.05/document at SmartERP volume tiers (2026 commercial terms; renegotiable at €1M ARR).
+- Aruba PEC Conservazione lists ~€0.05/document at SmartERP volume tiers (2026 commercial terms; renegotiable at €1M annual revenue).
 - InfoCert Conservazione lists ~€0.07/document at the same tier.
 - Namirial (third Conservatore, deferred to Enterprise demand) lists ~€0.06/document.
 
@@ -21,7 +21,7 @@ For Professionale+ tier (typical 5 000 - 30 000 invoices/year), the math flips:
 
 - The 10-year regulatory window means an outage at the wrong moment can leave the tenant unable to produce the "rapporto di versamento" during a tax audit.
 - Commercialisti and larger SMEs increasingly negotiate dual-vendor as part of their internal continuity policy (NIS2 D.Lgs. 138/2024 art. 25 — "supply-chain risk management" — applies indirectly: the conservazione is part of the financial-records pipeline).
-- The marginal cost (~€350-€2 100/year for the typical Professionale customer) is small relative to tier price (€199/seat/month).
+- The marginal cost (~€350-€2 100/year for the typical Professionale customer) is small relative to tier price (€199/seat/month maintenance fee).
 
 The platform's commercial tiers are encoded on `tenants.plan` (`base`, `professionale`, `enterprise`). The Conservazione adapter and registry are tier-agnostic; the policy layer above them is not yet defined.
 
