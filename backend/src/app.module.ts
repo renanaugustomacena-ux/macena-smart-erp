@@ -30,6 +30,7 @@ import { HrModule } from './hr/hr.module';
 import { BiModule } from './bi/bi.module';
 import { ComplianceModule } from './compliance/compliance.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { SsoModule } from './sso/sso.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -119,6 +120,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     BiModule,
     ComplianceModule,
     IntegrationsModule,
+    SsoModule,
   ],
   providers: [
     {
