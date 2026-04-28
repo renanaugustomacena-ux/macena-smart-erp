@@ -18,6 +18,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { ProductionModule } from './production/production.module';
 import { SalesModule } from './sales/sales.module';
 import { AccountingModule } from './accounting/accounting.module';
+import { ProcurementModule } from './procurement/procurement.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -95,6 +96,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     ProductionModule,
     SalesModule,
     AccountingModule,
+    ProcurementModule,
   ],
   providers: [
     {

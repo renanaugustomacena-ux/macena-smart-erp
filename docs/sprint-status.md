@@ -30,9 +30,9 @@
 
 (`src/common/password.util.spec.ts` resolved this iteration — see S1.4.)
 
-## Test totals
+## Test totals (post-Sprint 1 closure)
 
-- Full suite: 6 of 7 suites pass; 59 of 60 tests pass.
+- Full backend suite: 8 of 9 suites pass; 77 of 78 tests pass.
 - The remaining 1 failing test is the pre-existing FatturaPA-adapter assertion above.
 
 ## Loop log (per-iteration)
@@ -45,6 +45,8 @@
 - 2026-04-28 i06: S1.2 done — audited every multi-column index in `*.entity.ts` + `migrations/*.ts`; 100% R-D01-compliant (every multi-column index starts with `tenantId`). Created `docs/audits/M-001-tenantid-index-audit.md` (per-index inventory + exemption rationale) and `backend/scripts/audit-tenant-indexes.sh` (CI guard; `npm run audit:tenant-indexes`).
 - 2026-04-28 i07: S1.3 done (high-priority entities). Implemented `@DataClassification(level)` decorator + spec (5 tests pass). Tagged 31 columns across User, Tenant, Customer entities. Audit doc at `docs/audits/data-classification-audit.md`. Catch-up sweep (remaining 11 entity classes + CI guard) queued for Sprint 2.
 - 2026-04-28 i08: S1.8 done — wrote `src/cross-tenant-isolation.spec.ts` (13 tests, all green) covering all four layers. Created `backend/scripts/sprint-1-demo.sh` orchestrator (`npm run demo:sprint-1`) running 5 steps: zero R-D02 violations, R-D01 index audit, RuleTester self-test, cross-tenant 4-layer spec, supporting tests. Fixed two issues surfaced by the orchestrator: moved `eslint-rules/no-untenanted-query.test.js` into a `tests/` subdir so ESLint's `--rulesdir` doesn't load it as a rule (was emitting a banner that polluted `lint:check` output); tightened the demo's grep to count only "warning|error" rows that name the rule (not the test-pass banner). **Sprint 1 closes with full demo: PASS.**
+- 2026-04-28 i09 (Sprint 2 opens): S13.1 + S13.3 landed. New `procurement/` module with PR + PO entities, two state machines (48-test spec), service with approval-chain + state transitions + numbering, REST controller, DTOs, module wired into AppModule, migration M-013. Pre-existing JSDoc-`*/`-terminator bug in `migrations/1713436800000-InitialSchema.ts` fixed (was breaking `tsc --noEmit`). Procurement-only lint clean (zero R-D02 violations). Full suite 125/126 (only pre-existing fatturapa-adapter fail).
+- 2026-04-28 i10 (next): S13.4 — ADR-019 (carrier per-vendor adapter) + Bartolini adapter skeleton + CarrierAdapter port; then S13.2 (RFQ entity); then S13.5 (integration test against Testcontainers when feasible).
 
 ## Sprint 1 closure
 
@@ -54,9 +56,47 @@
 - New artefacts: `.eslintrc.cjs`, `eslint-rules/no-untenanted-query.js`, `eslint-rules/tests/no-untenanted-query.test.js`, `scripts/audit-tenant-indexes.sh`, `scripts/sprint-1-demo.sh`, `src/common/data-classification.decorator.ts`, `src/common/data-classification.decorator.spec.ts`, `src/common/problem-details.filter.spec.ts`, `src/auth/auth.service.lockout.spec.ts`, `src/cross-tenant-isolation.spec.ts`, `docs/sprint-status.md`, `docs/adrs/` (9 files), `docs/audits/M-001-tenantid-index-audit.md`, `docs/audits/data-classification-audit.md`.
 - npm scripts added: `lint:check`, `lint:rule-test`, `audit:tenant-indexes`, `demo:sprint-1`.
 
-## Sprint 2 (Sprints 13-24 of plan §19) — next focus
+## Sprint 2 (= plan §19.2 Sprint 13 — Procurement Phase A)
 
-Per plan §19.2 the next sprint opens Phase 2 (Sales depth + Mobile-PWA + Procurement). The autonomous-loop next iteration should pick from §31.1 Sprint 13 stories (PR + RFQ + PO entities; carrier adapter port skeleton; ADR-019). Carry-over Sprint 1 catch-ups: (a) DataClassification sweep across the remaining 11 entity classes + `audit:data-classification` CI guard; (b) FatturaPA-adapter assertion drift (when Sprint 11 lands).
+- **Sprint number**: 2 (autonomous-loop) / 13 (plan §19.2)
+- **Sprint window**: 2026-W20 to 2026-W21
+- **Status**: in_progress
+- **Sprint demo subject**: PR → approval-chain → PO end-to-end (entities, state machines, conversion).
+
+| ID | Subject | Status | Owner | PR |
+|---|---|---|---|---|
+| S13.1 | `PurchaseRequisition` entity + state machine + approval-chain | completed — entities under `src/procurement/entities/`; state machine at `src/procurement/state-machines/purchase-requisition.fsm.ts` (DRAFT → SUBMITTED → APPROVED/REJECTED/CANCELLED → CONVERTED); approval-chain logic in `procurement.service.ts` (auto-approve <€500; manager <€5k; admin <€25k; admin+founder ≥€25k) | autonomous-agent | (this iteration) |
+| S13.2 | `RequestForQuote` entity | pending | autonomous-agent | — |
+| S13.3 | `PurchaseOrder` entity + state machine | completed — entity at `src/procurement/entities/purchase-order.entity.ts`; FSM at `state-machines/purchase-order.fsm.ts` (full graph DRAFT → SENT → ACK → PARTIALLY_RECEIVED → RECEIVED → INVOICED → CLOSED + CANCELLED branches); service ships DRAFT/SENT/ACKNOWLEDGED/CANCELLED behaviourally; receipt + invoice transitions wire up in S14.1+S14.2 | autonomous-agent | (this iteration) |
+| S13.4 | ADR-019 (carrier per-vendor adapter) + Bartolini skeleton | pending | autonomous-agent | — |
+| S13.5 | PR → PO end-to-end integration test | partial — covered by FSM unit tests (48 cases) and the service's `convertRequisitionToPo` happy path; full integration test against Testcontainers Postgres deferred to S14 (when GR adds the rest of the procure-to-pay loop) | autonomous-agent | (this iteration) |
+
+### Sprint 2 deliverables this iteration (S13.1, S13.3 partial)
+
+New files
+- `backend/src/procurement/entities/purchase-requisition.entity.ts` (PurchaseRequisition + PurchaseRequisitionLine + ApprovalStep interface).
+- `backend/src/procurement/entities/purchase-order.entity.ts` (PurchaseOrder + PurchaseOrderLine + IncotermsCode type).
+- `backend/src/procurement/state-machines/purchase-requisition.fsm.ts` + matching test (covers all transitions in 48-test FSM spec).
+- `backend/src/procurement/state-machines/purchase-order.fsm.ts` + matching test.
+- `backend/src/procurement/state-machines/state-machines.spec.ts` (48 tests, all green).
+- `backend/src/procurement/procurement.service.ts` (CRUD + state transitions + approval-chain + numbering).
+- `backend/src/procurement/procurement.controller.ts` (REST endpoints under `/api/procurement/*`).
+- `backend/src/procurement/procurement.dto.ts` (class-validator DTOs).
+- `backend/src/procurement/procurement.module.ts`.
+- `backend/src/migrations/1714000000000-ProcurementSchema.ts` (M-013) — 4 tables, all `tenantId`-first composite indexes per R-D01.
+
+Modified
+- `backend/src/app.module.ts` — wires `ProcurementModule`.
+- `backend/src/migrations/1713436800000-InitialSchema.ts` — fix JSDoc comment that contained `**/*.entity.ts` (the `*/` was terminating the JSDoc comment early; pre-existing parser issue surfaced by the new `tsc --noEmit` run).
+
+Verified
+- Procurement-only ESLint with `no-untenanted-query` rule: 0 violations (R-D02 clean).
+- FSM spec 48/48 pass.
+- Full backend suite: 9/10 suites pass; 125/126 tests pass (the 1 failing test is the pre-existing FatturaPA assertion).
+
+## Test totals (post-Sprint 2 i01)
+
+- Full backend suite: 9 of 10 suites pass; 125 of 126 tests pass.
 
 ## Loop budget + halt awareness
 

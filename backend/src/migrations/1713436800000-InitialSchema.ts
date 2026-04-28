@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 /**
  * Initial schema migration.
  *
- * Derived from the current entity models in `backend/src/**/*.entity.ts`
+ * Derived from the current entity models in backend/src (`*.entity.ts`)
  * and `auth.service.ts` (inline @Entity). This replaces the dev-time
  * `synchronize: true` behaviour for production deployments.
  *
