@@ -38,6 +38,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { AnomalyModule } from './anomaly/anomaly.module';
 import { MultiCompanyModule } from './multi-company/multi-company.module';
 import { MarketplaceModule } from './marketplace/marketplace.module';
+import { EsgModule } from './esg/esg.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -135,6 +136,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     AnomalyModule,
     MultiCompanyModule,
     MarketplaceModule,
+    EsgModule,
   ],
   providers: [
     {
