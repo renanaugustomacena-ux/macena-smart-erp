@@ -22,6 +22,7 @@ import { ProcurementModule } from './procurement/procurement.module';
 import { WarehouseModule } from './warehouse/warehouse.module';
 import { ConservazioneModule } from './conservazione/conservazione.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
+import { PecModule } from './pec/pec.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -103,6 +104,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     WarehouseModule,
     ConservazioneModule,
     WebhooksModule,
+    PecModule,
   ],
   providers: [
     {
