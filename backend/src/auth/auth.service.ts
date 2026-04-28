@@ -100,7 +100,7 @@ export class User {
    * with high entropy; we store it hashed mainly to defend against DB dumps.
    */
   @Column({ nullable: true })
-  refreshTokenHash: string;
+  refreshTokenHash: string | null;
 
   /**
    * Monotonically-increasing counter. Bumped on every successful refresh.
@@ -210,7 +210,7 @@ export class AuthService {
       });
       throw new HttpException(
         `Account locked for ${minutes} more minute(s) after repeated failed attempts`,
-        HttpStatus.LOCKED,
+        423, // RFC 4918 §11.3 — Locked. Not in @nestjs/common's HttpStatus enum.
       );
     }
 
