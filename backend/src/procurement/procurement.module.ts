@@ -8,6 +8,11 @@ import {
   PurchaseOrder,
   PurchaseOrderLine,
 } from './entities/purchase-order.entity';
+import {
+  RequestForQuote,
+  RequestForQuoteLine,
+  RequestForQuoteQuote,
+} from './entities/request-for-quote.entity';
 import { ProcurementService } from './procurement.service';
 import { ProcurementController } from './procurement.controller';
 
@@ -18,6 +23,9 @@ import { ProcurementController } from './procurement.controller';
       PurchaseRequisitionLine,
       PurchaseOrder,
       PurchaseOrderLine,
+      RequestForQuote,
+      RequestForQuoteLine,
+      RequestForQuoteQuote,
     ]),
   ],
   providers: [ProcurementService],

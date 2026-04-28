@@ -14,11 +14,16 @@ import { TenantScopeGuard } from '../auth/guards/tenant-scope.guard';
 import { ProcurementService } from './procurement.service';
 import {
   ApprovePurchaseRequisitionDto,
+  AwardRfqDto,
   CancelPurchaseOrderDto,
   ConvertPurchaseRequisitionDto,
+  ConvertRfqToPoDto,
   CreatePurchaseOrderDto,
   CreatePurchaseRequisitionDto,
+  CreateRequestForQuoteDto,
+  RecordSupplierQuoteDto,
   RejectPurchaseRequisitionDto,
+  SendRequestForQuoteDto,
 } from './procurement.dto';
 
 interface RequestWithUser {
@@ -147,5 +152,74 @@ export class ProcurementController {
     @Body() dto: CancelPurchaseOrderDto,
   ) {
     return this.svc.cancelPurchaseOrder(req.user.tenantId, id, dto);
+  }
+
+  // ─── RequestForQuote ──────────────────────────────────────────
+
+  @Post('rfqs')
+  @ApiOperation({ summary: 'Create an RFQ (DRAFT)' })
+  async createRfq(
+    @Req() req: RequestWithUser,
+    @Body() dto: CreateRequestForQuoteDto,
+  ) {
+    return this.svc.createRfq(req.user.tenantId, dto);
+  }
+
+  @Get('rfqs/:id')
+  @ApiOperation({ summary: 'Get an RFQ by id' })
+  async getRfq(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.getRfq(req.user.tenantId, id);
+  }
+
+  @Post('rfqs/:id/send')
+  @ApiOperation({ summary: 'Send an RFQ to a list of suppliers' })
+  async sendRfq(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SendRequestForQuoteDto,
+  ) {
+    return this.svc.sendRfq(req.user.tenantId, id, dto);
+  }
+
+  @Post('rfqs/:id/quotes')
+  @ApiOperation({ summary: 'Record a supplier quote on an RFQ' })
+  async recordSupplierQuote(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RecordSupplierQuoteDto,
+  ) {
+    return this.svc.recordSupplierQuote(req.user.tenantId, id, dto);
+  }
+
+  @Post('rfqs/:id/award')
+  @ApiOperation({ summary: 'Award the RFQ to a winning quote' })
+  async awardRfq(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AwardRfqDto,
+  ) {
+    return this.svc.awardRfq(req.user.tenantId, id, dto);
+  }
+
+  @Post('rfqs/:id/cancel')
+  @ApiOperation({ summary: 'Cancel an RFQ' })
+  async cancelRfq(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.cancelRfq(req.user.tenantId, id);
+  }
+
+  @Post('rfqs/:id/convert')
+  @ApiOperation({ summary: 'Convert an awarded RFQ to a Purchase Order' })
+  async convertRfqToPo(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConvertRfqToPoDto,
+  ) {
+    return this.svc.convertRfqToPo(req.user.tenantId, id, dto);
   }
 }

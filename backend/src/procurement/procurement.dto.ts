@@ -123,3 +123,77 @@ export class CancelPurchaseOrderDto {
   @IsString() reason: string;
 }
 
+// --- RequestForQuote DTOs (S13.2) -----------------------------------------
+
+export class RequestForQuoteLineInputDto {
+  @IsUUID() productId: string;
+  @IsString() @Length(1, 500) description: string;
+  @IsNumberString() quantity: string;
+  @IsString() @Length(1, 20) @IsOptional() unitOfMeasure?: string;
+  @IsDateString() @IsOptional() needByDate?: string;
+}
+
+export class CreateRequestForQuoteDto {
+  @IsUUID() requesterId: string;
+  @IsDateString() issueDate: string;
+  @IsDateString() validUntilDate: string;
+  @IsString() @IsOptional() notes?: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => RequestForQuoteLineInputDto)
+  lines: RequestForQuoteLineInputDto[];
+}
+
+export class SendRequestForQuoteDto {
+  @IsArray() @ArrayMinSize(1) @IsUUID('all', { each: true })
+  supplierIds: string[];
+}
+
+export class RfqQuoteLineCostDto {
+  @IsUUID() rfqLineId: string;
+  @IsInt() @Min(0) unitCostCents: number;
+  @IsInt() @Min(0) @IsOptional() leadTimeDays?: number;
+}
+
+export class RecordSupplierQuoteDto {
+  @IsUUID() supplierId: string;
+  @IsInt() @Min(0) totalCents: number;
+  @IsString() @Length(3, 3) @IsOptional() currency?: string;
+  @IsDateString() @IsOptional() validUntilDate?: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => RfqQuoteLineCostDto)
+  perLineCosts: RfqQuoteLineCostDto[];
+  @IsString() @IsOptional() notes?: string;
+}
+
+export class AwardRfqDto {
+  @IsUUID() quoteId: string;
+}
+
+export class ConvertRfqToPoDto {
+  @IsDateString() orderDate: string;
+  @IsDateString() @IsOptional() expectedDeliveryDate?: string;
+  @IsUUID() @IsOptional() shipToWarehouseId?: string;
+  @IsString()
+  @Length(3, 3)
+  @IsIn([
+    'EXW',
+    'FCA',
+    'CPT',
+    'CIP',
+    'DAP',
+    'DPU',
+    'DDP',
+    'FAS',
+    'FOB',
+    'CFR',
+    'CIF',
+  ])
+  @IsOptional()
+  shippingTermsIncoterms?: string;
+  @IsInt() @Min(0) @IsOptional() paymentTermsDays?: number;
+}
+

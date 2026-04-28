@@ -21,10 +21,17 @@ import {
   type IncotermsCode,
 } from './entities/purchase-order.entity';
 import {
+  RequestForQuote,
+  RequestForQuoteLine,
+  RequestForQuoteQuote,
+  type RequestForQuoteStatus,
+} from './entities/request-for-quote.entity';
+import {
   assertPurchaseRequisitionTransition,
   canPurchaseRequisitionTransition,
 } from './state-machines/purchase-requisition.fsm';
 import { canPurchaseOrderTransition } from './state-machines/purchase-order.fsm';
+import { canRequestForQuoteTransition } from './state-machines/request-for-quote.fsm';
 import {
   CreatePurchaseRequisitionDto,
   CreatePurchaseOrderDto,
@@ -32,6 +39,11 @@ import {
   RejectPurchaseRequisitionDto,
   ConvertPurchaseRequisitionDto,
   CancelPurchaseOrderDto,
+  CreateRequestForQuoteDto,
+  SendRequestForQuoteDto,
+  RecordSupplierQuoteDto,
+  AwardRfqDto,
+  ConvertRfqToPoDto,
 } from './procurement.dto';
 
 /**
@@ -83,6 +95,12 @@ export class ProcurementService {
     private readonly poRepo: Repository<PurchaseOrder>,
     @InjectRepository(PurchaseOrderLine)
     private readonly poLineRepo: Repository<PurchaseOrderLine>,
+    @InjectRepository(RequestForQuote)
+    private readonly rfqRepo: Repository<RequestForQuote>,
+    @InjectRepository(RequestForQuoteLine)
+    private readonly rfqLineRepo: Repository<RequestForQuoteLine>,
+    @InjectRepository(RequestForQuoteQuote)
+    private readonly rfqQuoteRepo: Repository<RequestForQuoteQuote>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -414,6 +432,292 @@ export class ProcurementService {
       po.cancelledAt = new Date();
       po.cancellationReason = dto.reason;
     });
+  }
+
+  // ─── RequestForQuote ──────────────────────────────────────────
+
+  async createRfq(
+    tenantId: string,
+    dto: CreateRequestForQuoteDto,
+  ): Promise<RequestForQuote> {
+    const rfqNumber = await this.nextRfqNumber(tenantId);
+    return this.dataSource.transaction(async (manager) => {
+      const rfq = manager.create(RequestForQuote, {
+        tenantId,
+        rfqNumber,
+        requesterId: dto.requesterId,
+        issueDate: new Date(dto.issueDate),
+        validUntilDate: new Date(dto.validUntilDate),
+        status: 'draft' as RequestForQuoteStatus,
+        notes: dto.notes ?? null,
+        awardedQuoteId: null,
+        awardedAt: null,
+        convertedToPurchaseOrderId: null,
+      });
+      const saved = await manager.save(rfq);
+      const lineEntities = dto.lines.map((l) =>
+        manager.create(RequestForQuoteLine, {
+          tenantId,
+          rfqId: saved.id,
+          productId: l.productId,
+          description: l.description,
+          quantity: String(l.quantity),
+          unitOfMeasure: l.unitOfMeasure ?? 'pz',
+          needByDate: l.needByDate ? new Date(l.needByDate) : null,
+        }),
+      );
+      await manager.save(lineEntities);
+      saved.lines = lineEntities;
+      this.logger.log({
+        event: 'procurement.rfq_created',
+        tenantId,
+        rfqId: saved.id,
+        lineCount: lineEntities.length,
+      });
+      return saved;
+    });
+  }
+
+  async getRfq(tenantId: string, id: string): Promise<RequestForQuote> {
+    const rfq = await this.rfqRepo.findOne({
+      where: { id, tenantId },
+      relations: ['lines', 'quotes'],
+    });
+    if (!rfq) throw new NotFoundException(`RFQ ${id} not found`);
+    return rfq;
+  }
+
+  async sendRfq(
+    tenantId: string,
+    id: string,
+    dto: SendRequestForQuoteDto,
+  ): Promise<RequestForQuote> {
+    const rfq = await this.getRfq(tenantId, id);
+    if (!canRequestForQuoteTransition(rfq.status, 'sent')) {
+      throw new BadRequestException(
+        `Invalid transition: ${rfq.status} → sent`,
+      );
+    }
+    return this.dataSource.transaction(async (manager) => {
+      rfq.status = 'sent';
+      const saved = await manager.save(rfq);
+      const quoteEntities = dto.supplierIds.map((supplierId) =>
+        manager.create(RequestForQuoteQuote, {
+          tenantId,
+          rfqId: saved.id,
+          supplierId,
+          status: 'pending',
+          totalCents: null,
+          currency: 'EUR',
+          validUntilDate: null,
+          perLineCosts: [],
+          receivedAt: null,
+          notes: null,
+        }),
+      );
+      await manager.save(quoteEntities);
+      this.logger.log({
+        event: 'procurement.rfq_sent',
+        tenantId,
+        rfqId: id,
+        supplierCount: dto.supplierIds.length,
+      });
+      return saved;
+    });
+  }
+
+  async recordSupplierQuote(
+    tenantId: string,
+    rfqId: string,
+    dto: RecordSupplierQuoteDto,
+  ): Promise<RequestForQuoteQuote> {
+    const rfq = await this.getRfq(tenantId, rfqId);
+    if (rfq.status !== 'sent' && rfq.status !== 'quotes_received') {
+      throw new BadRequestException(
+        `Cannot record a quote on RFQ in status ${rfq.status}`,
+      );
+    }
+    const quote = await this.rfqQuoteRepo.findOne({
+      where: { rfqId, supplierId: dto.supplierId, tenantId },
+    });
+    if (!quote) {
+      throw new NotFoundException(
+        `Supplier ${dto.supplierId} was not solicited for RFQ ${rfqId}`,
+      );
+    }
+    quote.status = 'received';
+    quote.totalCents = dto.totalCents;
+    quote.currency = dto.currency ?? 'EUR';
+    quote.validUntilDate = dto.validUntilDate ? new Date(dto.validUntilDate) : null;
+    quote.perLineCosts = dto.perLineCosts;
+    quote.receivedAt = new Date();
+    quote.notes = dto.notes ?? null;
+    const savedQuote = await this.rfqQuoteRepo.save(quote);
+
+    // Promote RFQ to QUOTES_RECEIVED on first received quote.
+    if (rfq.status === 'sent') {
+      rfq.status = 'quotes_received';
+      await this.rfqRepo.save(rfq);
+    }
+    this.logger.log({
+      event: 'procurement.rfq_quote_received',
+      tenantId,
+      rfqId,
+      supplierId: dto.supplierId,
+      totalCents: dto.totalCents,
+    });
+    return savedQuote;
+  }
+
+  async awardRfq(
+    tenantId: string,
+    rfqId: string,
+    dto: AwardRfqDto,
+  ): Promise<RequestForQuote> {
+    const rfq = await this.getRfq(tenantId, rfqId);
+    if (!canRequestForQuoteTransition(rfq.status, 'awarded')) {
+      throw new BadRequestException(
+        `Invalid transition: ${rfq.status} → awarded`,
+      );
+    }
+    const quote = await this.rfqQuoteRepo.findOne({
+      where: { id: dto.quoteId, rfqId, tenantId },
+    });
+    if (!quote) {
+      throw new NotFoundException(
+        `Quote ${dto.quoteId} not found on RFQ ${rfqId}`,
+      );
+    }
+    if (quote.status !== 'received') {
+      throw new BadRequestException(
+        `Cannot award a quote in status ${quote.status}; must be 'received'`,
+      );
+    }
+    rfq.status = 'awarded';
+    rfq.awardedQuoteId = quote.id;
+    rfq.awardedAt = new Date();
+    const saved = await this.rfqRepo.save(rfq);
+    this.logger.log({
+      event: 'procurement.rfq_awarded',
+      tenantId,
+      rfqId,
+      quoteId: quote.id,
+      supplierId: quote.supplierId,
+      totalCents: quote.totalCents,
+    });
+    return saved;
+  }
+
+  async cancelRfq(tenantId: string, id: string): Promise<RequestForQuote> {
+    const rfq = await this.getRfq(tenantId, id);
+    if (!canRequestForQuoteTransition(rfq.status, 'cancelled')) {
+      throw new BadRequestException(
+        `Invalid transition: ${rfq.status} → cancelled`,
+      );
+    }
+    rfq.status = 'cancelled';
+    return this.rfqRepo.save(rfq);
+  }
+
+  async convertRfqToPo(
+    tenantId: string,
+    rfqId: string,
+    dto: ConvertRfqToPoDto,
+  ): Promise<PurchaseOrder> {
+    const rfq = await this.getRfq(tenantId, rfqId);
+    if (rfq.status !== 'awarded') {
+      throw new BadRequestException(
+        `Cannot convert RFQ in status ${rfq.status}; must be 'awarded'`,
+      );
+    }
+    if (!rfq.awardedQuoteId) {
+      throw new BadRequestException('RFQ has no awardedQuoteId');
+    }
+    if (rfq.convertedToPurchaseOrderId) {
+      throw new ConflictException(
+        `RFQ already converted to PO ${rfq.convertedToPurchaseOrderId}`,
+      );
+    }
+    const quote = await this.rfqQuoteRepo.findOne({
+      where: { id: rfq.awardedQuoteId, tenantId },
+    });
+    if (!quote) {
+      throw new NotFoundException('Awarded quote no longer exists');
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const poNumber = await this.nextPoNumber(tenantId);
+      const po = manager.create(PurchaseOrder, {
+        tenantId,
+        poNumber,
+        supplierId: quote.supplierId,
+        requisitionId: null,
+        orderDate: new Date(dto.orderDate),
+        expectedDeliveryDate: dto.expectedDeliveryDate
+          ? new Date(dto.expectedDeliveryDate)
+          : null,
+        shipToWarehouseId: dto.shipToWarehouseId ?? null,
+        status: 'draft' as PurchaseOrderStatus,
+        paymentTermsDays: dto.paymentTermsDays ?? 30,
+        paymentMethod: 'sepa_bank_transfer',
+        shippingTermsIncoterms:
+          (dto.shippingTermsIncoterms as IncotermsCode | undefined) ?? null,
+        currency: quote.currency,
+        subtotalCents: 0,
+        taxCents: 0,
+        totalCents: 0,
+        notes: null,
+      });
+      const savedPo = await manager.save(po);
+      const lineEntities = rfq.lines.map((rl) => {
+        const cost = quote.perLineCosts.find((c) => c.rfqLineId === rl.id);
+        const unitCostCents = cost?.unitCostCents ?? 0;
+        const qty = Number(rl.quantity);
+        const lineTotalCents = unitCostCents * qty;
+        return manager.create(PurchaseOrderLine, {
+          tenantId,
+          purchaseOrderId: savedPo.id,
+          productId: rl.productId,
+          description: rl.description,
+          quantity: rl.quantity,
+          unitOfMeasure: rl.unitOfMeasure,
+          unitCostCents,
+          lineTotalCents,
+          taxRate: 22,
+          taxAmountCents: Math.round(lineTotalCents * 0.22),
+          expectedDeliveryDate: rl.needByDate ?? null,
+          receivedQuantity: '0',
+          invoicedQuantity: '0',
+          notes: null,
+        });
+      });
+      await manager.save(lineEntities);
+      const subtotalCents = lineEntities.reduce(
+        (s, l) => s + l.lineTotalCents,
+        0,
+      );
+      const taxCents = lineEntities.reduce((s, l) => s + l.taxAmountCents, 0);
+      savedPo.subtotalCents = subtotalCents;
+      savedPo.taxCents = taxCents;
+      savedPo.totalCents = subtotalCents + taxCents;
+      await manager.save(savedPo);
+      rfq.status = 'converted';
+      rfq.convertedToPurchaseOrderId = savedPo.id;
+      await manager.save(rfq);
+      this.logger.log({
+        event: 'procurement.rfq_converted',
+        tenantId,
+        rfqId,
+        purchaseOrderId: savedPo.id,
+        totalCents: savedPo.totalCents,
+      });
+      return savedPo;
+    });
+  }
+
+  private async nextRfqNumber(tenantId: string): Promise<string> {
+    const year = new Date().getFullYear();
+    const count = await this.rfqRepo.count({ where: { tenantId } });
+    return `RFQ-${year}-${String(count + 1).padStart(5, '0')}`;
   }
 
   // ─── private helpers ──────────────────────────────────────────
