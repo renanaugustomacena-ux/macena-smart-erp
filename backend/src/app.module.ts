@@ -32,6 +32,7 @@ import { ComplianceModule } from './compliance/compliance.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { SsoModule } from './sso/sso.module';
 import { TreasuryModule } from './treasury/treasury.module';
+import { AiCopilotModule } from './ai-copilot/ai-copilot.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { QueuesModule } from './queues/queues.module';
 import { AuditModule } from './audit/audit.module';
@@ -123,6 +124,7 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
     IntegrationsModule,
     SsoModule,
     TreasuryModule,
+    AiCopilotModule,
   ],
   providers: [
     {
