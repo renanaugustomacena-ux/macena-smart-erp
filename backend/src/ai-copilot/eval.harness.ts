@@ -57,6 +57,68 @@ const SARA_GOLDEN_QUESTIONS: GoldenQuestion[] = [
     prompt: 'Riassumi le fatture passive del mese',
     expect: (output) => /\b(passive|fattur)/i.test(output),
   },
+  // Sprint 27 — production persona Q6-Q10
+  {
+    id: 'luca/q06-scrap',
+    persona: 'luca',
+    prompt: 'Spiegami lo spike di scarti delle ultime 2 settimane',
+    expect: (_, calls) => calls.some((c) => c.name === 'explain_scrap_spike'),
+  },
+  {
+    id: 'luca/q07-rootcause',
+    persona: 'luca',
+    prompt: 'Trova la causa principale dei difetti su SKU FUSO-12',
+    expect: (_, calls) => calls.some((c) => c.name === 'find_root_cause'),
+  },
+  {
+    id: 'luca/q08-throughput',
+    persona: 'luca',
+    prompt: 'Andamento del throughput WO degli ultimi 6 mesi',
+    expect: (_, calls) => calls.some((c) => c.name === 'work_order_throughput'),
+  },
+  {
+    id: 'luca/q09-pipeline',
+    persona: 'luca',
+    prompt: 'Quali DDT sono ancora aperti?',
+    expect: (_, calls) => calls.some((c) => c.name === 'ddt_pipeline'),
+  },
+  {
+    id: 'luca/q10-snapshot',
+    persona: 'luca',
+    prompt: 'Top articoli a magazzino oggi',
+    expect: (_, calls) => calls.some((c) => c.name === 'top_articles_produced'),
+  },
+  // Sprint 27 — Sara extended Q11-Q15
+  {
+    id: 'sara/q11-purchase',
+    persona: 'sara',
+    prompt: 'Andamento degli acquisti negli ultimi 3 mesi',
+    expect: (_, calls) => calls.some((c) => c.name === 'monthly_purchases'),
+  },
+  {
+    id: 'sara/q12-suppliers',
+    persona: 'sara',
+    prompt: 'Top 5 fornitori per spesa',
+    expect: (_, calls) => calls.some((c) => c.name === 'top_suppliers'),
+  },
+  {
+    id: 'sara/q13-customers',
+    persona: 'sara',
+    prompt: 'Cerca clienti che contengono "spa"',
+    expect: (_, calls) => calls.some((c) => c.name === 'list_customers'),
+  },
+  {
+    id: 'sara/q14-cash',
+    persona: 'sara',
+    prompt: 'Stato di cassa attuale',
+    expect: (_, calls) => calls.some((c) => c.name === 'cash_snapshot'),
+  },
+  {
+    id: 'sara/q15-intrastat',
+    persona: 'sara',
+    prompt: 'Stato Intrastat del 2026',
+    expect: (_, calls) => calls.some((c) => c.name === 'intrastat_status'),
+  },
 ];
 
 @Injectable()
