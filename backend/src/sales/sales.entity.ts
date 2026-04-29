@@ -188,6 +188,9 @@ export class SalesOrder {
     discountPct?: number;
     ivaRate: number;
     lineTotal: number;
+    /** Optional per-line warehouse override; falls back to the
+     *  tenant's default warehouse during reserve/ship. */
+    warehouseId?: string;
   }[];
 
   @CreateDateColumn()

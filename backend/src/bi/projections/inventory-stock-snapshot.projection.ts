@@ -37,7 +37,9 @@ export class InventoryStockSnapshotProjection implements Projection {
       rows: rows.map((r) => ({
         key: `${r.warehouseId}:${r.productId}`,
         payload: {
-          quantity: Number(r.quantity ?? 0),
+          quantity: Number(r.quantityOnHand ?? 0),
+          quantityReserved: Number(r.quantityReserved ?? 0),
+          quantityOnOrder: Number(r.quantityOnOrder ?? 0),
           warehouseId: r.warehouseId,
           productId: r.productId,
         },

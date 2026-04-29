@@ -100,8 +100,10 @@ export class FatturaPaAdapter {
     const splitPayment = input.customer.splitPayment === true;
     const esigibilitaIVA = splitPayment ? 'S' : 'I';
     const documentType = input.invoice.documentType ?? InvoiceDocumentType.TD01;
-    const formato = '1.2.2'; // FPR12 (B2B/B2C) or FPA12 (B2G) — B2B default below
 
+    // FormatoTrasmissione: FPA12 for the public administration; FPR12
+    // for B2B / B2C. Both pin the underlying schema to FatturaPA v1.2.2
+    // per AdE Provv. 89757/2018.
     const formatoTrasmissione =
       input.customer.customerType === 'public_administration' ? 'FPA12' : 'FPR12';
 
@@ -289,7 +291,11 @@ export class FatturaPaAdapter {
 
   private resolveDestinationCode(input: FatturaPaBuildInput): string {
     const sdi = input.customer.sdiDestinationCode;
-    if (sdi && /^[A-Z0-9]{7}$/.test(sdi)) return sdi;
+    // B2B / B2C codes are 7 alphanumeric (e.g., USAL8PV); PA / IPA office
+    // codes are 6 alphanumeric (e.g., UFXE7W). Both shapes are pinned by
+    // AdE; the adapter accepts either and lets the SDI intermediary
+    // route accordingly.
+    if (sdi && /^[A-Z0-9]{6,7}$/.test(sdi)) return sdi;
     // Default: '0000000' → SDI delivers via PEC channel.
     return '0000000';
   }

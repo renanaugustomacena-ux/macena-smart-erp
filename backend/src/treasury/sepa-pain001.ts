@@ -34,7 +34,7 @@ export function buildPain001(input: PainBatchInput): string {
   );
   const totalEuro = (totalCents / 100).toFixed(2);
   const txs = input.payments
-    .map((p, i) => {
+    .map((p) => {
       const amt = (Number(p.amountCents) / 100).toFixed(2);
       return `      <CdtTrfTxInf>
         <PmtId>

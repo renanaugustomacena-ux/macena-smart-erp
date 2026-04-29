@@ -45,7 +45,7 @@ export class ForecastingService {
     const stock = await this.stockRepo.findOne({
       where: { tenantId, productId },
     });
-    const onHand = Number(stock?.quantity ?? 0);
+    const onHand = Number(stock?.quantityOnHand ?? 0);
     const monthlyVelocity = Math.max(1, Math.round(onHand / 4));
     const predictedDemandUnits = Math.round(
       (monthlyVelocity / 30) * horizonDays,

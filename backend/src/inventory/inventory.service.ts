@@ -6,7 +6,13 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, FindOptionsWhere, DataSource } from 'typeorm';
+import {
+  Repository,
+  Like,
+  FindOptionsWhere,
+  DataSource,
+  EntityManager,
+} from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import {
@@ -544,7 +550,7 @@ export class InventoryService {
   // ─── Private helpers ───────────────────────────────────────────
 
   private async applyMovementToLevels(
-    manager: Parameters<Parameters<DataSource['transaction']>[0]>[0],
+    manager: EntityManager,
     tenantId: string,
     dto: StockMovementRequest,
   ): Promise<void> {
@@ -579,7 +585,7 @@ export class InventoryService {
   }
 
   private async adjustStock(
-    manager: Parameters<Parameters<DataSource['transaction']>[0]>[0],
+    manager: EntityManager,
     tenantId: string,
     productId: string,
     warehouseId: string,

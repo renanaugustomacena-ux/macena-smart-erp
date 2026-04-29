@@ -5,7 +5,6 @@ import {
   ForbiddenException,
   UnprocessableEntityException,
   HttpException,
-  HttpStatus,
   Logger,
   Inject,
 } from '@nestjs/common';

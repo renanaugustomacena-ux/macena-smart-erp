@@ -78,14 +78,18 @@ import { SecurityHeadersMiddleware } from './common/security-headers.middleware'
       isGlobal: true,
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        store: redisStore,
-        host: configService.get<string>('REDIS_HOST', 'localhost'),
-        port: configService.get<number>('REDIS_PORT', 6379),
-        password: configService.get<string>('REDIS_PASSWORD', '') || undefined,
-        ttl: configService.get<number>('CACHE_TTL', 300),
-        max: configService.get<number>('CACHE_MAX_ITEMS', 1000),
-      }),
+      // The `cache-manager-redis-store` runtime store contract is
+      // looser than the @nestjs/cache-manager generic type expects;
+      // we cast to keep the existing wiring without changing behaviour.
+      useFactory: (configService: ConfigService) =>
+        ({
+          store: redisStore,
+          host: configService.get<string>('REDIS_HOST', 'localhost'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+          password: configService.get<string>('REDIS_PASSWORD', '') || undefined,
+          ttl: configService.get<number>('CACHE_TTL', 300),
+          max: configService.get<number>('CACHE_MAX_ITEMS', 1000),
+        }) as never,
     }),
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],

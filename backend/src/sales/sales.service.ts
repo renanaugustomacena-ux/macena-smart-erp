@@ -147,7 +147,7 @@ export class SalesService {
       orderDate: new Date(dto.orderDate),
       requestedDeliveryDate: dto.requestedDeliveryDate
         ? new Date(dto.requestedDeliveryDate)
-        : null,
+        : undefined,
       customerPoReference: dto.customerPoReference,
       notes: dto.notes,
       lines,

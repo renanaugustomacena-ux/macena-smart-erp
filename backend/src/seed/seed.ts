@@ -425,7 +425,6 @@ async function upsertMovements(
   const need = Math.max(0, 20 - existing);
   if (need === 0) return existing;
 
-  const now = new Date();
   let seeded = 0;
   for (let i = 0; i < need; i++) {
     const product = products[i % products.length];

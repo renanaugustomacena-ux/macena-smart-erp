@@ -119,8 +119,12 @@ export class AuditInterceptor implements NestInterceptor {
       };
       // Fire and forget. Even if the write fails (e.g., DB not migrated),
       // the request already completed; keep the latency hit off the hot path.
+      // TypeORM's QueryDeepPartialEntity narrows jsonb fields to a
+      // function-or-deep-partial union the writer can't satisfy
+      // statically; the runtime contract accepts plain Partial so we
+      // cast at the boundary.
       this.auditRepo
-        .insert(record)
+        .insert(record as never)
         .catch((err: Error) =>
           this.logger.warn(
             `audit_logs insert failed (${err.message}); path=${record.path}`,
