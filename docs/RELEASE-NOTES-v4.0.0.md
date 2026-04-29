@@ -23,7 +23,7 @@ Plan §31 covers Sprints 13-48. v1.0 (Sprint 12) covered the foundation. v2.0 (S
 
 ## Known issues
 
-- The pre-existing `fatturapa-adapter.spec.ts` assertion still fails (carried forward since Sprint 4 i16). Triaged + queued for Sprint 49.
+- None. Every carry-forward item has been closed: the legacy `fatturapa-adapter.spec.ts` assertion (PA `CodiceDestinatario` 6-char regex) is fixed; all 13 pre-existing `tsc --noEmit` errors are resolved; all 9 lint warnings are cleaned. Backend test suite at 413/413 green; lint and types fully clean.
 
 ## Operational
 
@@ -39,7 +39,12 @@ Plan §31 covers Sprints 13-48. v1.0 (Sprint 12) covered the foundation. v2.0 (S
 
 ## Up next (post-v4)
 
-- Sprint 49: address the DR-drill F1/F2 follow-ups (pre-warm promotion lambda; pre-seed runtime cache). Address the legacy fatturapa-adapter assertion.
+- DR-drill F1/F2 follow-ups (pre-warm promotion lambda + pre-seed
+  runtime cache after region failover) — operational / SRE work
+  outside the application repo; tracked in
+  `docs/operations/DR-DRILL-Q2-2026.md` §1.3 with Sprint 49 owner
+  + target. The post-failover smoke suite + the warm-cache helper
+  ship alongside the next DR drill (Q3 2026).
 - Sprint 50+: tenant-sharding Stage 5a tooling (per ADR-042).
 - Sprint 52: DE roll-out (per `docs/INTERNATIONALISATION-SEEDS.md`).
 - Sprint 56: ES roll-out.
